@@ -60,20 +60,13 @@
     return mondays;
   }
 
+  // returns weekly hours as object where keys are the dates as YYYY-MM-DD and values are the sum of daily hours
   function reduceWeekly(weekly) {
-    var currentWeek = isCurrentWeek(moment(weekly.day_entries[0].day_entry.spent_at));
-    return weekly.day_entries.reduce(function(sum, entry) {
-      if (currentWeek) {
-         var entryDate = moment(entry.day_entry.spent_at);
-         if (entryDate < moment()) {
-            return sum + entry.day_entry.hours;
-         } else {
-            return sum;
-         }
-      } else {
-        return sum + entry.day_entry.hours;
-      }
-    }, 0);
+    return weekly.day_entries.reduce(function(obj, entry) {
+      obj[entry.day_entry.spent_at] = obj[entry.day_entry.spent_at] || 0;
+      obj[entry.day_entry.spent_at] += entry.day_entry.hours;
+      return obj;
+    }, {});
   }
 
   function fetchJSON(startDate) {
@@ -82,13 +75,13 @@
     });
   }
 
-  function getWeeklyHours(startDate) {
+  function getWeeklyHours(monday) {
     var deferred = $.Deferred();
-    var id = "harvestBalance.hours."+ startDate.format("YYYY.W");
+    var id = "harvestBalance.hours."+ monday.format("YYYY.W");
 
     // always refetch current week and previous week
-    if (shouldRefetch(startDate)) {
-      fetchJSON(startDate).then(function(weeklyHours) {
+    if (shouldRefetch(monday)) {
+      fetchJSON(monday).then(function(weeklyHours) {
         localforage.setItem(id, weeklyHours).then(function() {
           deferred.resolve(weeklyHours);
         });
@@ -99,7 +92,7 @@
         if (weeklyHours) {
           deferred.resolve(weeklyHours);
         } else {
-          fetchJSON(startDate).then(function(weeklyHours) {
+          fetchJSON(monday).then(function(weeklyHours) {
             localforage.setItem(id, weeklyHours).then(function() {
               deferred.resolve(weeklyHours);
             });
@@ -109,6 +102,30 @@
     }
 
     return deferred.promise();
+  }
+
+  function formatWeeklyHours(hoursObj, startDate) {
+    var dates = Object.keys(hoursObj);
+    var firstDay = moment(dates[0]);
+
+    // for the first week, only count hours from starting day
+    if (firstDay.isoWeek() === moment(startDate).isoWeek()) {
+      dates = dates.filter(function(date) {
+        return moment(date) >= moment(startDate);
+      });
+    // for the current week, only count hours for current day and days before it
+    } else if (isCurrentWeek(firstDay)) {
+      dates = dates.filter(function(date) {
+        return moment(date) < moment();
+      });
+    }
+
+    var hours = dates.reduce(function(sum, date) {
+      sum = sum + hoursObj[date];
+      return sum;
+    }, 0);
+
+    return hours;
   }
 
   function balanceKeys() {
@@ -129,14 +146,29 @@
     });
   }
 
-  // NOTE: startDate is always assumed to be monday
-  function expectedWeeklyHours(startDate) {
+  function expectedWeeklyHours(monday, startDate) {
+    startDate = moment(startDate);
     var holidays = publicHolidays();
-    var iterateUntil = isCurrentWeek(startDate) ? (moment().isoWeekday() - 1) : 4;
-    var week = [moment(startDate)];
+    var iterateUntil, week;
 
-    for (var i=1; i <= iterateUntil; i++) {
-      week.push( moment(startDate).add(i, "days") );
+    if (moment(monday).isoWeek() === startDate.isoWeek()) {
+      if (isCurrentWeek(monday)) {
+        iterateUntil = moment().isoWeekday() - startDate.isoWeekday();
+      } else {
+        iterateUntil = 5 - startDate.isoWeekday();
+      }
+      week = (iterateUntil < 0) ? [] : [moment(startDate)];
+
+      for (var i=1; i <= iterateUntil; i++) {
+        week.push( moment(startDate).add(i, "days") );
+      }
+    } else {
+      iterateUntil = isCurrentWeek(monday) ? (moment().isoWeekday() - 1) : 4;
+      week = [moment(monday)];
+
+      for (var i=1; i <= iterateUntil; i++) {
+        week.push( moment(monday).add(i, "days") );
+      }
     }
 
     return week.filter(function(day) {
@@ -150,8 +182,10 @@
     var deferred = $.Deferred();
     var weeklyDeferreds = getMondaysRange(from, to).map(function(date) {
       return getWeeklyHours(date).then(function(hours) {
+        return formatWeeklyHours(hours, from);
+      }).then(function(hours) {
         return {
-          expectedHours: expectedWeeklyHours(date),
+          expectedHours: expectedWeeklyHours(date, from),
           actualHours: hours
         };
       });

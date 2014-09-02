@@ -14,8 +14,5 @@ Navigate to **chrome://extensions** and drag&drop **dist/Harvest.crx** to your b
 All finnish public holidays are not counted as working days.
 Additionally, Midsummer's Eve and Christmas Eve (24.12) are not counted as working days.
 
-## TODO
-* Use 7.5 hours for today if no hours entered, otherwise use hours entered
-* Allow user to customize day length and public holidays
-* Visualize all data fetching actions by showing a loading indicator
-* Automatically reload balance counter when entering hours instead of requiring hard reload
+## Updating
+Remember to reset your storage by hitting **"Reload"** after updating the plugin. 

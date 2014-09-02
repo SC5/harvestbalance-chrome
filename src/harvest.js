@@ -61,8 +61,18 @@
   }
 
   function reduceWeekly(weekly) {
+    var currentWeek = isCurrentWeek(moment(weekly.day_entries[0].day_entry.spent_at));
     return weekly.day_entries.reduce(function(sum, entry) {
-      return sum + entry.day_entry.hours;
+      if (currentWeek) {
+         var entryDate = moment(entry.day_entry.spent_at);
+         if (entryDate < moment()) {
+            return sum + entry.day_entry.hours;
+         } else {
+            return sum;
+         }
+      } else {
+        return sum + entry.day_entry.hours;
+      }
     }, 0);
   }
 

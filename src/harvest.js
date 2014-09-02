@@ -273,6 +273,14 @@
             });
           });
         });
+
+        // refetch data when #AjaxSuccess element gets modified
+        $("#AjaxSuccess").on("DOMSubtreeModified", function(a) {
+          balance(startDate, moment()).done(function(balance) {
+            render(format(balance), template, {startDate: startDate});
+          });
+        });
+
       });
 
       balance(startDate, moment()).done(function(balance) {

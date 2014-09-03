@@ -2,36 +2,59 @@
 (function() {
   "use strict";
 
-  // list of public holidays in Finland, hardcoded for now
+  // lists of public holidays, used list can be switched in settings panel
   var HOLIDAYS = {
-    2010: ["1.1", "6.1", "2.4", "5.4", "1.5", "13.5", "25.6", "6.12", "24.12", "25.12", "26.12"],
-    2011: ["1.1", "6.1", "22.4", "25.4", "1.5", "2.6", "24.6", "6.12", "24.12", "25.12", "26.12"],
-    2012: ["1.1", "6.1", "6.4", "9.4", "1.5", "17.5", "22.6", "6.12", "24.12", "25.12", "26.12"],
-    2013: ["1.1", "6.1", "29.3", "1.4", "1.5", "9.5", "21.6", "6.12", "24.12", "25.12", "26.12"],
-    2014: ["1.1", "6.1", "18.4", "21.4", "1.5", "29.5", "20.6", "6.12", "24.12", "25.12", "26.12"],
-    2015: ["1.1", "6.1", "3.4", "6.4", "1.5", "14.5", "19.6", "6.12", "24.12", "25.12", "26.12"],
-    2016: ["1.1", "6.1", "25.3", "28.3", "1.5", "5.5", "24.6", "6.12", "24.12", "25.12", "26.12"],
-    2017: ["1.1", "6.1", "14.4", "17.4", "1.5", "25.5", "23.6", "6.12", "24.12", "25.12", "26.12"]
+    "Finland (public holidays)": {
+      2013: ["1.1", "6.1", "29.3", "1.4", "1.5", "9.5", "21.6", "6.12", "24.12", "25.12", "26.12"],
+      2014: ["1.1", "6.1", "18.4", "21.4", "1.5", "29.5", "20.6", "6.12", "24.12", "25.12", "26.12"],
+      2015: ["1.1", "6.1", "3.4", "6.4", "1.5", "14.5", "19.6", "6.12", "24.12", "25.12", "26.12"],
+      2016: ["1.1", "6.1", "25.3", "28.3", "1.5", "5.5", "24.6", "6.12", "24.12", "25.12", "26.12"],
+      2017: ["1.1", "6.1", "14.4", "17.4", "1.5", "25.5", "23.6", "6.12", "24.12", "25.12", "26.12"]
+    },
+    "No public holidays": {
+      2013: [],
+      2014: [],
+      2015: [],
+      2016: [],
+      2017: []
+    }
   };
 
   function settings() {
     return new Promise(function(resolve, reject) {
       Promise.all([
         localforage.getItem("harvestBalance.startDate"),
-        localforage.getItem("harvestBalance.dayLength")
+        localforage.getItem("harvestBalance.dayLength"),
+        localforage.getItem("harvestBalance.holidaysList")
       ]).then(function(settings) {
         resolve({
           startDate: settings[0],
-          dayLength: settings[1]
+          dayLength: settings[1],
+          holidaysList: settings[2]
         });
       });
     });
   }
 
-  function publicHolidays() {
+  function buildHolidayLists(selectedList) {
+    var $select = $("<select class='holiday-lists'>");
+    Object.keys(HOLIDAYS).forEach(function(list) {
+      var $option = $("<option>").val(list).html(list);
+      if (selectedList === list) $option.attr("selected", true);
+      $select.append( $option );
+    });
+    return $select[0].outerHTML;
+  }
+
+  function publicHolidays(list) {
     var holidays = [];
-    Object.keys(HOLIDAYS).map(function(year) {
-      HOLIDAYS[year].forEach(function(date) {
+
+    if (!HOLIDAYS[list]) {
+      return [];
+    }
+
+    Object.keys(HOLIDAYS[list]).map(function(year) {
+      HOLIDAYS[list][year].forEach(function(date) {
         holidays.push( moment(date+"."+year.toString(), "DD.MM.YYYY") );
       });
     });
@@ -164,9 +187,10 @@
     });
   }
 
-  function expectedWeeklyHours(monday, startDate, dayLength) {
-    startDate = moment(startDate);
-    var holidays = publicHolidays();
+  function expectedWeeklyHours(options) {
+    var monday = options.monday;
+    var startDate = moment(options.startDate);
+    var holidays = publicHolidays(options.holidaysList);
     var iterateUntil, week;
 
     if (moment(monday).isoWeek() === startDate.isoWeek()) {
@@ -192,18 +216,23 @@
     return week.filter(function(day) {
       return !isHoliday(day, holidays);
     }).reduce(function(sum) {
-      return sum + dayLength;
+      return sum + options.dayLength;
     }, 0.0);
   }
 
-  function balance(from, to, dayLength) {
+  function balance(options) {
     return new Promise(function(resolve, reject) {
-      var weeklyDeferreds = getMondaysRange(from, to).map(function(date) {
+      var weeklyDeferreds = getMondaysRange(options.from, options.to).map(function(date) {
         return getWeeklyHours(date).then(function(hours) {
-          return formatWeeklyHours(hours, from);
+          return formatWeeklyHours(hours, options.from);
         }).then(function(hours) {
           return {
-            expectedHours: expectedWeeklyHours(date, from, dayLength),
+            expectedHours: expectedWeeklyHours({
+              monday: date,
+              startDate: options.from,
+              dayLength: options.dayLength,
+              holidaysList: options.holidaysList
+            }),
             actualHours: hours
           };
         });
@@ -221,7 +250,7 @@
 
           // add default hours for today if no hours logged in yet
           if (!todaysHours) {
-            balance = balance + dayLength;
+            balance = balance + options.dayLength;
           }
 
           resolve(balance);
@@ -231,14 +260,15 @@
     });
   }
 
-  function render(balance, template, options) {
-    template.then(function(tmpl) {
-      $(".balance").html(_template(tmpl, {
+  function render(balance, options) {
+    options.template.then(function(template) {
+      $(".balance").html(_template(template, {
         balance: balance,
         firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
         calendarStart: options.startDate.format("YYYY-MM-DD"),
         startDate: options.startDate.format("DD.MM.YYYY"),
-        dayLength: options.dayLength
+        dayLength: options.dayLength,
+        holidayLists: buildHolidayLists(options.holidaysList)
       }));
     });
   }
@@ -255,13 +285,13 @@
     return str;
   }
 
-  function reload(startDate, template, dayLength) {
+  function reload(options) {
     clearBalanceHours().then(function() {
       // this awkward setTimeout is needed because localForage has issues with Chrome
       // see: https://github.com/mozilla/localForage/issues/175
       setTimeout(function() {
-        balance(startDate, moment(), dayLength).then(function(balance) {
-          render(format(balance), template, {startDate: startDate, dayLength: dayLength});
+        balance({from: options.startDate, to: moment(), dayLength: options.dayLength, holidaysList: options.holidaysList}).then(function(balance) {
+          render(format(balance), {template: options.template, startDate: options.startDate, dayLength: options.dayLength, holidaysList: options.holidaysList});
         });
       }, 0);
     });
@@ -272,8 +302,15 @@
     settings().then(function(settings) {
       var startDate = settings.startDate ? moment(settings.startDate) : moment().startOf("year");
       var dayLength = settings.dayLength ? settings.dayLength : 7.5;
+      var holidaysList = settings.holidaysList ? settings.holidaysList : Object.keys(HOLIDAYS)[0];
 
       var template = $.get(chrome.extension.getURL("template.html"));
+
+      var fetchAndRender = function() {
+        return balance({from: startDate, to: moment(), dayLength: dayLength, holidaysList: holidaysList}).then(function(balance) {
+          render(format(balance), {template: template, startDate: startDate, dayLength: dayLength, holidaysList: holidaysList});
+        });
+      }
 
       // initial render
       template.then(function(tmpl) {
@@ -286,7 +323,7 @@
         })));
 
         $(".balance").on("click", ".reload", function() {
-          reload(startDate, template);
+          reload({startDate: startDate, template: template, dayLength: dayLength, holidaysList: holidaysList});
         });
 
         $(".balance").on("click", ".settings", function() {
@@ -306,9 +343,13 @@
         $(".balance").on("change", ".day-length-range", function(event) {
           dayLength = parseFloat(event.target.value);
           localforage.setItem("harvestBalance.dayLength", dayLength);
-          balance(startDate, moment(), dayLength).then(function(balance) {
-            render(format(balance), template, {startDate: startDate, dayLength: dayLength});
-          });
+          fetchAndRender();
+        });
+
+        $(".balance").on("change", ".holiday-lists", function(event) {
+          holidaysList = event.target.value;
+          localforage.setItem("harvestBalance.holidaysList", holidaysList);
+          fetchAndRender();
         });
 
         $(".balance").on("click", ".date-picker", function() {
@@ -318,24 +359,18 @@
             startDate = moment(event.target.value);
             localforage.setItem("harvestBalance.startDate", event.target.value);
             $date_input.hide();
-            balance(startDate, moment(), dayLength).then(function(balance) {
-              render(format(balance), template, {startDate: startDate, dayLength: dayLength});
-            });
+            fetchAndRender();
           });
         });
 
         // refetch data when #AjaxSuccess element gets modified
         $("#AjaxSuccess").on("DOMSubtreeModified", function(a) {
-          balance(startDate, moment(), dayLength).then(function(balance) {
-            render(format(balance), template, {startDate: startDate, dayLength: dayLength});
-          });
+          fetchAndRender();
         });
 
       });
 
-      balance(startDate, moment(), dayLength).then(function(balance) {
-        render(format(balance), template, {startDate: startDate, dayLength: dayLength});
-      });
+      fetchAndRender();
 
     });
 

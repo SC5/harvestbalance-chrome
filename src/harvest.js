@@ -14,8 +14,19 @@
     2017: ["1.1", "6.1", "14.4", "17.4", "1.5", "25.5", "23.6", "6.12", "24.12", "25.12", "26.12"]
   };
 
-  // day length in hours
-  var dayLength = 7.5;
+  function settings() {
+    return new Promise(function(resolve, reject) {
+      Promise.all([
+        localforage.getItem("harvestBalance.startDate"),
+        localforage.getItem("harvestBalance.dayLength")
+      ]).then(function(settings) {
+        resolve({
+          startDate: settings[0],
+          dayLength: settings[1]
+        });
+      });
+    });
+  }
 
   function publicHolidays() {
     var holidays = [];
@@ -153,7 +164,7 @@
     });
   }
 
-  function expectedWeeklyHours(monday, startDate) {
+  function expectedWeeklyHours(monday, startDate, dayLength) {
     startDate = moment(startDate);
     var holidays = publicHolidays();
     var iterateUntil, week;
@@ -185,14 +196,14 @@
     }, 0.0);
   }
 
-  function balance(from, to) {
+  function balance(from, to, dayLength) {
     return new Promise(function(resolve, reject) {
       var weeklyDeferreds = getMondaysRange(from, to).map(function(date) {
         return getWeeklyHours(date).then(function(hours) {
           return formatWeeklyHours(hours, from);
         }).then(function(hours) {
           return {
-            expectedHours: expectedWeeklyHours(date, from),
+            expectedHours: expectedWeeklyHours(date, from, dayLength),
             actualHours: hours
           };
         });
@@ -226,7 +237,8 @@
         balance: balance,
         firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
         calendarStart: options.startDate.format("YYYY-MM-DD"),
-        startDate: options.startDate.format("DD.MM.YYYY")
+        startDate: options.startDate.format("DD.MM.YYYY"),
+        dayLength: options.dayLength
       }));
     });
   }
@@ -243,13 +255,13 @@
     return str;
   }
 
-  function reload(startDate, template) {
+  function reload(startDate, template, dayLength) {
     clearBalanceHours().then(function() {
       // this awkward setTimeout is needed because localForage has issues with Chrome
       // see: https://github.com/mozilla/localForage/issues/175
       setTimeout(function() {
-        balance(startDate, moment()).then(function(balance) {
-          render(format(balance), template, {startDate: startDate});
+        balance(startDate, moment(), dayLength).then(function(balance) {
+          render(format(balance), template, {startDate: startDate, dayLength: dayLength});
         });
       }, 0);
     });
@@ -257,8 +269,9 @@
 
   $(function() {
 
-    localforage.getItem("harvestBalance.startDate").then(function(startDate) {
-      startDate = startDate ? moment(startDate) : moment().startOf("year");
+    settings().then(function(settings) {
+      var startDate = settings.startDate ? moment(settings.startDate) : moment().startOf("year");
+      var dayLength = settings.dayLength ? settings.dayLength : 7.5;
 
       var template = $.get(chrome.extension.getURL("template.html"));
 
@@ -268,11 +281,34 @@
           balance: "?",
           firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
           calendarStart: startDate.format("YYYY-MM-DD"),
-          startDate: startDate.format("DD.MM.YYYY")
+          startDate: startDate.format("DD.MM.YYYY"),
+          dayLength: dayLength
         })));
 
         $(".balance").on("click", ".reload", function() {
           reload(startDate, template);
+        });
+
+        $(".balance").on("click", ".settings", function() {
+          $(".balance .main-panel").hide();
+          $(".balance .settings-panel").show();
+        });
+
+        $(".balance").on("click", ".close-settings", function() {
+          $(".balance .main-panel").show();
+          $(".balance .settings-panel").hide();
+        });
+
+        $(".balance").on("input", ".day-length-range", function(event) {
+          $(".balance .day-length").val(event.target.value+" hours");
+        });
+
+        $(".balance").on("change", ".day-length-range", function(event) {
+          dayLength = parseFloat(event.target.value);
+          localforage.setItem("harvestBalance.dayLength", dayLength);
+          balance(startDate, moment(), dayLength).then(function(balance) {
+            render(format(balance), template, {startDate: startDate, dayLength: dayLength});
+          });
         });
 
         $(".balance").on("click", ".date-picker", function() {
@@ -282,23 +318,23 @@
             startDate = moment(event.target.value);
             localforage.setItem("harvestBalance.startDate", event.target.value);
             $date_input.hide();
-            balance(startDate, moment()).then(function(balance) {
-              render(format(balance), template, {startDate: startDate});
+            balance(startDate, moment(), dayLength).then(function(balance) {
+              render(format(balance), template, {startDate: startDate, dayLength: dayLength});
             });
           });
         });
 
         // refetch data when #AjaxSuccess element gets modified
         $("#AjaxSuccess").on("DOMSubtreeModified", function(a) {
-          balance(startDate, moment()).then(function(balance) {
-            render(format(balance), template, {startDate: startDate});
+          balance(startDate, moment(), dayLength).then(function(balance) {
+            render(format(balance), template, {startDate: startDate, dayLength: dayLength});
           });
         });
 
       });
 
-      balance(startDate, moment()).then(function(balance) {
-        render(format(balance), template, {startDate: startDate});
+      balance(startDate, moment(), dayLength).then(function(balance) {
+        render(format(balance), template, {startDate: startDate, dayLength: dayLength});
       });
 
     });

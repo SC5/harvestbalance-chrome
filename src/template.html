@@ -1,13 +1,33 @@
-<div class="current-balance">
-  Current hour balance from {startDate} to today: <strong>{balance}</strong> hours.
+<div class="main-panel">
+  <div class="current-balance">
+    Current hour balance from {startDate} to today: <strong>{balance}</strong> hours.
+  </div>
+
+  <div class="date-input" style="display: none;">
+    <input type="date" min="{firstDayOfPreviousYear}" value="{calendarStart}">
+  </div>
+
+  <div class="buttons">
+    <div class="button date-picker"><i class="icon-calendar"></i> Start date</div>
+    <div class="button settings" title="Settings"><i class="icon-cog"></i> Settings</div>
+  </div>
 </div>
 
-<div class="date-input" style="display: none;">
-  <input type="date" min="{firstDayOfPreviousYear}" value="{calendarStart}"/>
-</div>
+<div class="settings-panel" style="display: none;">
+  <h1>Settings</h1>
+  <div class="button close-settings">Close</div>
 
-<div class="buttons">
-  <div class="button date-picker"><i class="icon-calendar"></i> Start date</div>
-  <div class="button reload" title="Reload "><i class="icon-spinner"></i> Reload</div>
-  <div class="button settings" title="Settings"><i class="icon-cog"></i> Settings</div>
+  <div class="balance-settings-container">
+
+    <div class="setting">
+      <label for="day-length-range">Change day length</label>
+      <input class="day-length-range" type="range" min="0.5" max="12" step="0.5" value="{dayLength}">
+      <output class="day-length">{dayLength} hours</output>
+    </div>
+
+    <div class="setting">
+      <div class="button reload" title="Clear local storage and reload monthly balances from Harvest."><i class="icon-spinner"></i> Reset all data</div>
+    </div>
+
+  </div>
 </div>

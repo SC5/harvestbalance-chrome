@@ -8,9 +8,12 @@
   text-shadow: 0 1px 0 #FFF;
 }
 
+.balance .main-panel, .balance .settings-panel {
+  padding: 14px;
+}
+
 .balance .current-balance {
   display: inline-block;
-  padding: 14px;
 }
 
 .balance .buttons {
@@ -24,8 +27,50 @@
   width: 200px;
   position: absolute;
   top: 7px;
-  right: 295px;
+  right: 205px;
 }
+
+.balance h1 {
+  font-size: 16px;
+  margin: 0 0 14px 0;
+  display: inline-block;
+}
+
+.balance .balance-settings-container {
+
+}
+
+.balance .close-settings {
+  float: right;
+}
+
+.balance .day-length-range {
+  display: inline-block;
+  width: 200px;
+  vertical-align: middle;
+}
+
+.balance .day-length-range:focus {
+  border: 1px solid #aaa;
+  box-shadow: none;
+}
+
+.balance .day-length {
+  font-size: 15px;
+  padding: 10px;
+  font-weight: bold;
+}
+
+.balance .setting label {
+  display: block;
+  padding: 5px 0;
+  font-size: 14px;
+}
+
+.balance .reload {
+  margin-top: 20px;
+}
+
 
 @font-face {
   font-family: 'icomoon';

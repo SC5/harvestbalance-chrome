@@ -76,32 +76,31 @@
   }
 
   function getWeeklyHours(monday) {
-    var deferred = $.Deferred();
-    var id = "harvestBalance.hours."+ monday.format("YYYY.W");
+    return new Promise(function(resolve, reject) {
+      var id = "harvestBalance.hours."+ monday.format("YYYY.W");
 
-    // always refetch current week and previous week
-    if (shouldRefetch(monday)) {
-      fetchJSON(monday).then(function(weeklyHours) {
-        localforage.setItem(id, weeklyHours).then(function() {
-          deferred.resolve(weeklyHours);
-        });
-      });
-    } else {
-      // first try from localforage and if it fails, fetch json from harvest
-      localforage.getItem(id).then(function(weeklyHours) {
-        if (weeklyHours) {
-          deferred.resolve(weeklyHours);
-        } else {
-          fetchJSON(monday).then(function(weeklyHours) {
-            localforage.setItem(id, weeklyHours).then(function() {
-              deferred.resolve(weeklyHours);
-            });
+      // always refetch current week and previous week
+      if (shouldRefetch(monday)) {
+        fetchJSON(monday).then(function(weeklyHours) {
+          localforage.setItem(id, weeklyHours).then(function() {
+            resolve(weeklyHours);
           });
-        }
-      });
-    }
-
-    return deferred.promise();
+        });
+      } else {
+        // first try from localforage and if it fails, fetch json from harvest
+        localforage.getItem(id).then(function(weeklyHours) {
+          if (weeklyHours) {
+            resolve(weeklyHours);
+          } else {
+            fetchJSON(monday).then(function(weeklyHours) {
+              localforage.setItem(id, weeklyHours).then(function() {
+                resolve(weeklyHours);
+              });
+            });
+          }
+        });
+      }
+    });
   }
 
   function formatWeeklyHours(hoursObj, startDate) {
@@ -179,31 +178,29 @@
   }
 
   function balance(from, to) {
-    var deferred = $.Deferred();
-    var weeklyDeferreds = getMondaysRange(from, to).map(function(date) {
-      return getWeeklyHours(date).then(function(hours) {
-        return formatWeeklyHours(hours, from);
-      }).then(function(hours) {
-        return {
-          expectedHours: expectedWeeklyHours(date, from),
-          actualHours: hours
-        };
+    return new Promise(function(resolve, reject) {
+      var weeklyDeferreds = getMondaysRange(from, to).map(function(date) {
+        return getWeeklyHours(date).then(function(hours) {
+          return formatWeeklyHours(hours, from);
+        }).then(function(hours) {
+          return {
+            expectedHours: expectedWeeklyHours(date, from),
+            actualHours: hours
+          };
+        });
       });
+
+      Promise.all(weeklyDeferreds).then(function(weeklyBalances) {
+        var balance = weeklyBalances.map(function(balance) {
+          return balance.actualHours - balance.expectedHours;
+        }).reduce(function(sum, difference) {
+          return sum + difference;
+        }, 0.0);
+
+        resolve(balance);
+      });
+
     });
-
-    $.when.apply($, weeklyDeferreds).then(function() {
-      var weeklyBalances = [].slice.call(arguments, 0);
-
-      var balance = weeklyBalances.map(function(balance) {
-        return balance.actualHours - balance.expectedHours;
-      }).reduce(function(sum, difference) {
-        return sum + difference;
-      }, 0.0);
-
-      deferred.resolve(balance);
-    });
-
-    return deferred.promise();
   }
 
   function render(balance, template, options) {
@@ -234,7 +231,7 @@
       // this awkward setTimeout is needed because localForage has issues with Chrome
       // see: https://github.com/mozilla/localForage/issues/175
       setTimeout(function() {
-        balance(startDate, moment()).done(function(balance) {
+        balance(startDate, moment()).then(function(balance) {
           render(format(balance), template, {startDate: startDate});
         });
       }, 0);
@@ -268,7 +265,7 @@
             startDate = moment(event.target.value);
             localforage.setItem("harvestBalance.startDate", event.target.value);
             $date_input.hide();
-            balance(startDate, moment()).done(function(balance) {
+            balance(startDate, moment()).then(function(balance) {
               render(format(balance), template, {startDate: startDate});
             });
           });
@@ -276,14 +273,14 @@
 
         // refetch data when #AjaxSuccess element gets modified
         $("#AjaxSuccess").on("DOMSubtreeModified", function(a) {
-          balance(startDate, moment()).done(function(balance) {
+          balance(startDate, moment()).then(function(balance) {
             render(format(balance), template, {startDate: startDate});
           });
         });
 
       });
 
-      balance(startDate, moment()).done(function(balance) {
+      balance(startDate, moment()).then(function(balance) {
         render(format(balance), template, {startDate: startDate});
       });
 

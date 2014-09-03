@@ -145,6 +145,14 @@
     });
   }
 
+  function todaysHours() {
+    return new Promise(function(resolve, reject) {
+      localforage.getItem("harvestBalance.hours."+ moment().format("YYYY.W")).then(function(weeklyHours) {
+        resolve( weeklyHours[moment().format("YYYY-MM-DD")] || 0 );
+      });
+    });
+  }
+
   function expectedWeeklyHours(monday, startDate) {
     startDate = moment(startDate);
     var holidays = publicHolidays();
@@ -191,13 +199,22 @@
       });
 
       Promise.all(weeklyDeferreds).then(function(weeklyBalances) {
-        var balance = weeklyBalances.map(function(balance) {
-          return balance.actualHours - balance.expectedHours;
-        }).reduce(function(sum, difference) {
-          return sum + difference;
-        }, 0.0);
 
-        resolve(balance);
+        todaysHours().then(function(todaysHours) {
+
+          var balance = weeklyBalances.map(function(balance) {
+            return balance.actualHours - balance.expectedHours;
+          }).reduce(function(sum, difference) {
+            return sum + difference;
+          }, 0.0);
+
+          // add default hours for today if no hours logged in yet
+          if (!todaysHours) {
+            balance = balance + dayLength;
+          }
+
+          resolve(balance);
+        });
       });
 
     });

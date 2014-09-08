@@ -275,7 +275,7 @@
 
   function format(balance) {
     var sign = balance >= 0 ? "+" : "";
-    return sign+balance;
+    return sign+parseFloat(balance).toFixed(2);
   }
 
   function _template(str, data){

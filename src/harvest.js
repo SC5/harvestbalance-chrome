@@ -68,12 +68,12 @@
   }
 
   function isCurrentWeek(date) {
-    return moment(date).isoWeek() === moment().isoWeek();
+    return startOfIsoWeek(date).isSame(startOfIsoWeek(moment()));
   }
 
   // current & previous week
   function shouldRefetch(date) {
-    return ( isCurrentWeek(date) || moment(date).isoWeek() === moment().subtract(1, "weeks").isoWeek() );
+    return moment().diff(moment(date), "days") < 14;
   }
 
   // retrieves harvest user id from preloaded JSON
@@ -142,7 +142,7 @@
     var firstDay = moment(dates[0]);
 
     // for the first week, only count hours from starting day
-    if (firstDay.isoWeek() === moment(startDate).isoWeek()) {
+    if (firstDay.diff(startDate, "weeks") === 0) {
       dates = dates.filter(function(date) {
         return moment(date) >= moment(startDate);
       });
@@ -193,7 +193,7 @@
     var holidays = publicHolidays(options.holidaysList);
     var iterateUntil, week;
 
-    if (moment(monday).isoWeek() === startDate.isoWeek()) {
+    if ( startOfIsoWeek(monday).isSame(startOfIsoWeek(startDate)) ) {
       if (isCurrentWeek(monday)) {
         iterateUntil = moment().isoWeekday() - startDate.isoWeekday();
       } else {

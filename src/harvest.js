@@ -265,6 +265,7 @@
       $(".balance").html(_template(template, {
         balance: balance,
         firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
+        maxDate: moment().format("YYYY-MM-DD"),
         calendarStart: options.startDate.format("YYYY-MM-DD"),
         startDate: options.startDate.format("DD.MM.YYYY"),
         dayLength: options.dayLength,
@@ -317,6 +318,7 @@
         $("#main_content .wrapper").prepend($("<div class='balance'/>").html(_template(tmpl, {
           balance: "?",
           firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
+          maxDate: moment().format("YYYY-MM-DD"),
           calendarStart: startDate.format("YYYY-MM-DD"),
           startDate: startDate.format("DD.MM.YYYY"),
           dayLength: dayLength

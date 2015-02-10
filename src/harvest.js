@@ -2,6 +2,10 @@
 (function() {
   "use strict";
 
+  var config = {
+    user: getUserId()
+  };
+
   // lists of public holidays, used list can be switched in settings panel
   var HOLIDAYS = {
     "Finland (public holidays)": {
@@ -76,9 +80,11 @@
     return moment().diff(moment(date), "days") < 14;
   }
 
-  // retrieves harvest user id from preloaded JSON
+  // retrieves harvest user id from API
   function getUserId() {
-    return Object.keys(JSON.parse($("#all-users-data-island").html()))[0];
+    return $.getJSON("/account/who_am_i").then(function(data) {
+      return data.user.id;
+    });
   }
 
   function startOfIsoWeek(date) {
@@ -104,8 +110,10 @@
   }
 
   function fetchJSON(startDate) {
-    return $.getJSON("/time/weekly/"+ startDate.format("YYYY/MM/DD") +"/user/"+getUserId()).then(function(weekly) {
-      return reduceWeekly(weekly);
+    return config.user.then(function(userId) {
+      return $.getJSON("/time/weekly/"+ startDate.format("YYYY/MM/DD") +"/user/"+userId).then(function(weekly) {
+        return reduceWeekly(weekly);
+      });
     });
   }
 

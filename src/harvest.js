@@ -323,7 +323,7 @@
 
       // initial render
       template.then(function(tmpl) {
-        $("#main_content .wrapper").prepend($("<div class='balance'/>").html(_template(tmpl, {
+        $("main .wrapper").prepend($("<div class='balance'/>").html(_template(tmpl, {
           balance: "?",
           firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
           maxDate: moment().format("YYYY-MM-DD"),

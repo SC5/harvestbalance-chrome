@@ -374,7 +374,7 @@
         });
 
         // refetch data when #AjaxSuccess element gets modified
-        $("#AjaxSuccess").on("DOMSubtreeModified", function(a) {
+        $("#status_message").on("DOMSubtreeModified", function(a) {
           fetchAndRender();
         });
 

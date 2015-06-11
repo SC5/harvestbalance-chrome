@@ -31,7 +31,7 @@ Remember to reset your storage by hitting **Settings -> Reset all data** button 
 
 ## Contributing
 
-* Fork https://github.com/SC5/harvestbalance
+* Fork https://github.com/SC5/harvestbalance-chrome
 * Clone it
 * Navigate to **chrome://extensions**, enable **"Developer mode"**
 * Drag & drop **src/** from your clone to your browser extensions window

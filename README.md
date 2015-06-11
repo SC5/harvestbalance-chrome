@@ -31,9 +31,14 @@ Remember to reset your storage by hitting **Settings -> Reset all data** button 
 
 ## Contributing
 
-* Fork https://bitbucket.org/SC5/harvestbalance
+* Fork https://github.com/SC5/harvestbalance
 * Clone it
 * Navigate to **chrome://extensions**, enable **"Developer mode"**
 * Drag & drop **src/** from your clone to your browser extensions window
 * Hack to your heart's content
 * Commit, push and send a PR to upstream
+
+## License
+
+MIT
+Copyright © 2015 SC5 Online Ltd

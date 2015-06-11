@@ -41,4 +41,5 @@ Remember to reset your storage by hitting **Settings -> Reset all data** button 
 ## License
 
 MIT
+
 Copyright © 2015 SC5 Online Ltd

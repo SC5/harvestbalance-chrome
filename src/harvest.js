@@ -373,7 +373,7 @@
           entries: (
             settings.paidOvertime
               ? settings.paidOvertime
-              : [{month: "2015-06", hours: "12"}, {month: "2011-02", hours: "5"}, {month: "2014-02", hours: "10"}]
+              : []
           ).sort(function(a,b) {
             return a.month > b.month;
           }),

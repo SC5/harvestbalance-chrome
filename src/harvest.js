@@ -29,12 +29,14 @@
       Promise.all([
         localforage.getItem("harvestBalance.startDate"),
         localforage.getItem("harvestBalance.dayLength"),
-        localforage.getItem("harvestBalance.holidaysList")
+        localforage.getItem("harvestBalance.holidaysList"),
+        localforage.getItem("harvestBalance.initialBalance")
       ]).then(function(settings) {
         resolve({
           startDate: settings[0],
           dayLength: settings[1],
-          holidaysList: settings[2]
+          holidaysList: settings[2],
+          initialBalance: settings[3]
         });
       });
     });
@@ -111,7 +113,8 @@
 
   function fetchJSON(startDate) {
     return config.user.then(function(userId) {
-      return $.getJSON("/time/weekly/"+ startDate.format("YYYY/MM/DD") +"/user/"+userId).then(function(weekly) {
+      return $.getJSON("/time/weekly/"+ startDate.format("YYYY/MM/DD") +"/user/"+userId)
+      .then(function(weekly) {
         return reduceWeekly(weekly);
       });
     });
@@ -189,7 +192,9 @@
 
   function todaysHours() {
     return new Promise(function(resolve, reject) {
-      localforage.getItem("harvestBalance.hours."+ moment().format("YYYY.W")).then(function(weeklyHours) {
+      localforage
+      .getItem("harvestBalance.hours."+ moment().format("YYYY.W"))
+      .then(function(weeklyHours) {
         resolve( weeklyHours[moment().format("YYYY-MM-DD")] || 0 );
       });
     });
@@ -261,6 +266,9 @@
             balance = balance + options.dayLength;
           }
 
+          // add initial balance
+          balance = balance + options.initialBalance;
+
           resolve(balance);
         });
       });
@@ -277,7 +285,8 @@
         calendarStart: options.startDate.format("YYYY-MM-DD"),
         startDate: options.startDate.format("DD.MM.YYYY"),
         dayLength: options.dayLength,
-        holidayLists: buildHolidayLists(options.holidaysList)
+        holidayLists: buildHolidayLists(options.holidaysList),
+        initialBalance: options.initialBalance
       }));
     });
   }
@@ -299,8 +308,23 @@
       // this awkward setTimeout is needed because localForage has issues with Chrome
       // see: https://github.com/mozilla/localForage/issues/175
       setTimeout(function() {
-        balance({from: options.startDate, to: moment(), dayLength: options.dayLength, holidaysList: options.holidaysList}).then(function(balance) {
-          render(format(balance), {template: options.template, startDate: options.startDate, dayLength: options.dayLength, holidaysList: options.holidaysList});
+        balance({
+          from: options.startDate,
+          to: moment(),
+          dayLength: options.dayLength,
+          holidaysList: options.holidaysList,
+          initialBalance: options.initialBalance
+        }).then(function(balance) {
+          render(
+            format(balance),
+            {
+              template: options.template,
+              startDate: options.startDate,
+              dayLength: options.dayLength,
+              holidaysList: options.holidaysList,
+              initialBalance: options.initialBalance
+            }
+          );
         });
       }, 0);
     });
@@ -312,28 +336,55 @@
       var startDate = settings.startDate ? moment(settings.startDate) : moment().startOf("year");
       var dayLength = settings.dayLength ? settings.dayLength : 7.5;
       var holidaysList = settings.holidaysList ? settings.holidaysList : Object.keys(HOLIDAYS)[0];
+      var initialBalance = settings.initialBalance ? parseInt(settings.initialBalance, 10) : 0;
 
       var template = $.get(chrome.extension.getURL("template.html"));
 
       var fetchAndRender = function() {
-        return balance({from: startDate, to: moment(), dayLength: dayLength, holidaysList: holidaysList}).then(function(balance) {
-          render(format(balance), {template: template, startDate: startDate, dayLength: dayLength, holidaysList: holidaysList});
+        return balance({
+          from: startDate,
+          to: moment(),
+          dayLength: dayLength,
+          holidaysList: holidaysList,
+          initialBalance: initialBalance
+        }).then(function(balance) {
+          render(
+            format(balance),
+            {
+              template: template,
+              startDate: startDate,
+              dayLength: dayLength,
+              holidaysList: holidaysList,
+              initialBalance: initialBalance
+            }
+          );
         });
       }
 
       // initial render
       template.then(function(tmpl) {
-        $("main .wrapper").prepend($("<div class='balance'/>").html(_template(tmpl, {
-          balance: "?",
-          firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
-          maxDate: moment().format("YYYY-MM-DD"),
-          calendarStart: startDate.format("YYYY-MM-DD"),
-          startDate: startDate.format("DD.MM.YYYY"),
-          dayLength: dayLength
-        })));
+        $("main .wrapper").prepend(
+          $("<div class='balance'/>").html(
+            _template(tmpl, {
+              balance: "?",
+              firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
+              maxDate: moment().format("YYYY-MM-DD"),
+              calendarStart: startDate.format("YYYY-MM-DD"),
+              startDate: startDate.format("DD.MM.YYYY"),
+              dayLength: dayLength,
+              initialBalance: initialBalance
+            })
+          )
+        );
 
         $(".balance").on("click", ".reload", function() {
-          reload({startDate: startDate, template: template, dayLength: dayLength, holidaysList: holidaysList});
+          reload({
+            startDate: startDate,
+            template: template,
+            dayLength: dayLength,
+            holidaysList: holidaysList,
+            initialBalance: initialBalance
+          });
         });
 
         $(".balance").on("click", ".settings", function() {
@@ -344,6 +395,7 @@
         $(".balance").on("click", ".close-settings", function() {
           $(".balance .main-panel").show();
           $(".balance .settings-panel").hide();
+          fetchAndRender();
         });
 
         $(".balance").on("input", ".day-length-range", function(event) {
@@ -362,15 +414,14 @@
           fetchAndRender();
         });
 
-        $(".balance").on("click", ".date-picker", function() {
-          var $date_input = $(".balance .date-input");
-          $date_input.toggle();
-          $date_input.change(function(event) {
-            startDate = moment(event.target.value);
-            localforage.setItem("harvestBalance.startDate", event.target.value);
-            $date_input.hide();
-            fetchAndRender();
-          });
+        $(".balance").on("change", ".start-date", function(event) {
+          startDate = moment(event.target.value);
+          localforage.setItem("harvestBalance.startDate", event.target.value);
+        });
+
+        $(".balance").on("change", ".initial-balance", function(event) {
+          initialBalance = parseInt(event.target.value, 10);
+          localforage.setItem("harvestBalance.initialBalance", initialBalance);
         });
 
         // refetch data when #AjaxSuccess element gets modified

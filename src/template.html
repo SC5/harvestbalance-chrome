@@ -3,19 +3,14 @@
     Current hour balance from {startDate} to today: <strong>{balance}</strong> hours.
   </div>
 
-  <div class="date-input" style="display: none;">
-    <input type="date" min="{firstDayOfPreviousYear}" max="{maxDate}" value="{calendarStart}">
-  </div>
-
   <div class="buttons">
-    <div class="button date-picker"><i class="icon-calendar"></i> Start date</div>
     <div class="button settings" title="Settings"><i class="icon-cog"></i> Settings</div>
   </div>
 </div>
 
 <div class="settings-panel" style="display: none;">
-  <h1>Settings</h1>
-  <div class="button close-settings">Close</div>
+  <h1>Harvest Balance settings</h1>
+  <div class="button close-settings">Save and close</div>
 
   <div class="balance-settings-container">
 
@@ -28,6 +23,21 @@
     <div class="setting">
       <label>Change holidays list</label>
       {holidayLists}
+    </div>
+
+    <div class="setting">
+      <label><i class="icon-calendar"></i> Start date</label>
+      <input class="start-date" type="date" min="{firstDayOfPreviousYear}" max="{maxDate}" value="{calendarStart}">
+    </div>
+
+    <div class="setting">
+      <label>Initial balance</label>
+      <p>
+        Your initial balance will be included in the total hour balance.<br>
+        For example, if your balance after 2013 is +10 hours, you set the starting date as 1.1.2014 and initial balance as 10.
+      </p>
+      <input type="text" class="initial-balance" name="initial-balance" value="{initialBalance}">
+
     </div>
 
     <div class="setting">

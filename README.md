@@ -8,7 +8,8 @@ Hours from last two weeks are automatically re-fetched on every reload, so if yo
 
 ## Installation
 
-Navigate to **chrome://extensions** and drag&drop **dist/Harvest.crx** to your browser window.
+1. [Download Harvest.crx](https://github.com/SC5/harvestbalance-chrome/raw/master/dist/Harvest.crx)
+2. Navigate to **chrome://extensions** and drag&drop downloaded **Harvest.crx** to your browser window.
 
 ## Settings
 

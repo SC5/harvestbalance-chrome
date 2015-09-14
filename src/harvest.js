@@ -1,9 +1,16 @@
-/* global $, moment, console, localforage */
+/* global $, moment, console, localforage, Mustache */
+
+// TODO: rewrite with React
+
 (function() {
   "use strict";
 
   var config = {
-    user: getUserId()
+    user: getUserId(),
+    templates: {
+      main: {selector: ".main-panel", index: 0},
+      settings: {selector: ".settings-panel", index: 1}
+    }
   };
 
   // lists of public holidays, used list can be switched in settings panel
@@ -24,32 +31,35 @@
     }
   };
 
+  // loads settings from localForage and returns an object
   function settings() {
     return new Promise(function(resolve, reject) {
       Promise.all([
         localforage.getItem("harvestBalance.startDate"),
         localforage.getItem("harvestBalance.dayLength"),
         localforage.getItem("harvestBalance.holidaysList"),
-        localforage.getItem("harvestBalance.initialBalance")
+        localforage.getItem("harvestBalance.initialBalance"),
+        localforage.getItem("harvestBalance.paidOvertime")
       ]).then(function(settings) {
-        resolve({
+        return resolve({
           startDate: settings[0],
           dayLength: settings[1],
           holidaysList: settings[2],
-          initialBalance: settings[3]
+          initialBalance: settings[3],
+          paidOvertime: settings[4]
         });
       });
     });
   }
 
   function buildHolidayLists(selectedList) {
-    var $select = $("<select class='holiday-lists'>");
-    Object.keys(HOLIDAYS).forEach(function(list) {
-      var $option = $("<option>").val(list).html(list);
-      if (selectedList === list) $option.attr("selected", true);
-      $select.append( $option );
+    return Object.keys(HOLIDAYS).map(function(list) {
+      return {
+        key: list,
+        value: list,
+        selected: selectedList === list ? "selected" : ""
+      };
     });
-    return $select[0].outerHTML;
   }
 
   function publicHolidays(list) {
@@ -251,6 +261,15 @@
         });
       });
 
+      // reduce paid overtime for given time period
+      var paidOvertime = options.paidOvertime.entries.reduce(function(total, row) {
+        var date = moment(row.month, "YYYY-MM").startOf("month");
+        if (date >= options.from && date <= options.to) {
+          total = total + Number(row.hours);
+        }
+        return total;
+      }, 0);
+
       Promise.all(weeklyDeferreds).then(function(weeklyBalances) {
 
         todaysHours().then(function(todaysHours) {
@@ -269,6 +288,9 @@
           // add initial balance
           balance = balance + options.initialBalance;
 
+          // deduce paid overtime
+          balance = balance - paidOvertime;
+
           resolve(balance);
         });
       });
@@ -277,30 +299,29 @@
   }
 
   function render(balance, options) {
-    options.template.then(function(template) {
-      $(".balance").html(_template(template, {
-        balance: balance,
-        firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
-        maxDate: moment().format("YYYY-MM-DD"),
-        calendarStart: options.startDate.format("YYYY-MM-DD"),
-        startDate: options.startDate.format("DD.MM.YYYY"),
-        dayLength: options.dayLength,
-        holidayLists: buildHolidayLists(options.holidaysList),
-        initialBalance: options.initialBalance
-      }));
+    Promise.all(options.templates).then(function(templates) {
+      var template = templates[config.templates[options.template].index];
+      var selector = config.templates[options.template].selector;
+
+      $(".balance " + selector).html(
+        Mustache.render(template, {
+          balance: balance,
+          firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
+          maxDate: moment().format("YYYY-MM-DD"),
+          calendarStart: options.startDate.format("YYYY-MM-DD"),
+          startDate: options.startDate.format("DD.MM.YYYY"),
+          dayLength: options.dayLength,
+          holidayLists: buildHolidayLists(options.holidaysList),
+          initialBalance: options.initialBalance,
+          paidOvertime: options.paidOvertime
+        })
+      );
     });
   }
 
   function format(balance) {
     var sign = balance >= 0 ? "+" : "";
     return sign+parseFloat(balance).toFixed(2);
-  }
-
-  function _template(str, data){
-    for (var property in data) {
-      str = str.replace(new RegExp('{'+property+'}','g'), data[property]);
-    }
-    return str;
   }
 
   function reload(options) {
@@ -313,16 +334,19 @@
           to: moment(),
           dayLength: options.dayLength,
           holidaysList: options.holidaysList,
-          initialBalance: options.initialBalance
+          initialBalance: options.initialBalance,
+          paidOvertime: options.paidOvertime
         }).then(function(balance) {
           render(
             format(balance),
             {
-              template: options.template,
+              templates: options.templates,
+              template: "main",
               startDate: options.startDate,
               dayLength: options.dayLength,
               holidaysList: options.holidaysList,
-              initialBalance: options.initialBalance
+              initialBalance: options.initialBalance,
+              paidOvertime: options.paidOvertime
             }
           );
         });
@@ -339,39 +363,73 @@
         dayLength: settings.dayLength ? settings.dayLength : 7.5,
         holidaysList: settings.holidaysList ? settings.holidaysList : Object.keys(HOLIDAYS)[0],
         initialBalance: settings.initialBalance ? parseInt(settings.initialBalance, 10) : 0,
-        template: $.get(chrome.extension.getURL("template.html"))
+        paidOvertime: {
+          index: function() {
+            return state.paidOvertime.entries.indexOf(this);
+          },
+          title: function() {
+            return moment(this.month, "YYYY-MM").format("MMMM YYYY");
+          },
+          entries: (
+            settings.paidOvertime
+              ? settings.paidOvertime
+              : [{month: "2015-06", hours: "12"}, {month: "2011-02", hours: "5"}, {month: "2014-02", hours: "10"}]
+          ).sort(function(a,b) {
+            return a.month > b.month;
+          }),
+        },
+        templates: [
+          $.get(chrome.extension.getURL("main-panel.html")),
+          $.get(chrome.extension.getURL("settings-panel.html"))
+        ]
       };
 
       var setState = function(key, value) {
         state[key] = value;
       };
 
-      var fetchAndRender = function() {
+      var fetchAndRender = function(template) {
         return balance(
           $.extend({}, state, {from: state.startDate, to: moment()})
         )
         .then(function(balance) {
           render(
             format(balance),
-            $.extend({}, state)
+            $.extend({}, state, {template: template || "main"})
           );
         });
       };
 
       // initial render
-      state.template.then(function(tmpl) {
-        $("main .wrapper").prepend(
-          $("<div class='balance'/>").html(
-            _template(tmpl,
+      Promise.all(state.templates).then(function(templates) {
+        var mainTemplate = templates[0];
+        var settingsTemplate = templates[1];
+
+        $("main .wrapper")
+        .prepend(
+          $("<div class='balance'/>")
+        )
+        .find('.balance')
+        .prepend(
+          $("<div class='main-panel'/>").html(
+            Mustache.render(mainTemplate,
+              {
+                balance: "?",
+                startDate: state.startDate.format("DD.MM.YYYY")
+              }
+            )
+          )
+        )
+        .prepend(
+          $("<div class='settings-panel'/>").css({display: "none"}).html(
+            Mustache.render(settingsTemplate,
               $.extend(
                 {},
                 state,
                 {
-                  balance: "?",
                   firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
                   maxDate: moment().format("YYYY-MM-DD"),
                   calendarStart: state.startDate.format("YYYY-MM-DD"),
-                  startDate: state.startDate.format("DD.MM.YYYY")
                 }
               )
             )
@@ -390,7 +448,7 @@
         $(".balance").on("click", ".close-settings", function() {
           $(".balance .main-panel").show();
           $(".balance .settings-panel").hide();
-          fetchAndRender();
+          fetchAndRender("main");
         });
 
         $(".balance").on("input", ".day-length-range", function(event) {
@@ -417,14 +475,55 @@
           localforage.setItem("harvestBalance.initialBalance", state.initialBalance);
         });
 
-        // refetch data when #AjaxSuccess element gets modified
+        $(".balance").on("click", ".remove", function(event) {
+          var index = $(event.target).attr("data-index");
+          state.paidOvertime.entries.splice(index, 1);
+          localforage.setItem("harvestBalance.paidOvertime", state.paidOvertime.entries);
+          fetchAndRender("settings");
+        });
+
+        $(".balance").on("input", ".paid-overtime-hours", function(event) {
+          var $target = $(event.target);
+          if ($.isNumeric($target.val())) {
+            $target.removeClass("invalid");
+            state.paidOvertime.entries[$target.attr("data-index")].hours = $target.val();
+            localforage.setItem("harvestBalance.paidOvertime", state.paidOvertime.entries);
+          } else {
+            $target.addClass("invalid");
+          }
+        });
+
+        $(".balance").on("change click", ".new-paid-overtime-month", function(event) {
+          var disabled = !event.target.value || !$.isNumeric($(".balance .new-paid-overtime-value").val());
+          $(".balance .buttons-container .add-paid-overtime").prop("disabled", disabled);
+        });
+
+        $(".balance").on("input", ".new-paid-overtime-value", function(event) {
+          var disabled = !$.isNumeric(event.target.value) || !$(".balance .new-paid-overtime-month").val();
+          $(".balance .buttons-container .add-paid-overtime").prop("disabled", disabled);
+        });
+
+        $(".balance").on("click", ".add-paid-overtime", function(event) {
+          state.paidOvertime.entries.push({
+            month: $(".balance .new-paid-overtime-month").val(),
+            hours: $(".balance .new-paid-overtime-value").val()
+          });
+          localforage.setItem("harvestBalance.paidOvertime", state.paidOvertime.entries);
+          fetchAndRender("settings");
+          $(".balance .new-paid-overtime-month").val("");
+          $(".balance .new-paid-overtime-value").val("");
+          $(".balance .add-paid-overtime").prop("disabled", true);
+        });
+
+        // refetch data when #status_message element gets modified
         $("#status_message").on("DOMSubtreeModified", function(a) {
-          fetchAndRender();
+          fetchAndRender("main");
         });
 
       });
 
-      fetchAndRender();
+      fetchAndRender("settings");
+      fetchAndRender("main");
 
     });
 

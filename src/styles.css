@@ -32,16 +32,7 @@
   top: 6px;
 }
 
-.balance .start-date {
-  width: 160px;
-  padding: 6px;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-  color: #555;
-  border-radius: 4px;
-  border: 1px solid #bbbbbb;
-}
-
-.balance .initial-balance {
+.balance input[type="text"], .balance input[type="date"], .balance input[type="month"] {
   width: 160px;
   padding: 6px;
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
@@ -61,12 +52,14 @@
 }
 
 .balance .close-settings {
-  float: right;
+  position: absolute;
+  right: 15px;
+  top: 15px;
 }
 
 .balance .day-length-range {
   display: inline-block;
-  width: 200px;
+  width: 160px;
   vertical-align: middle;
 }
 
@@ -87,10 +80,42 @@
   font-size: 14px;
 }
 
-.balance .reload {
-  margin-top: 20px;
+.balance .setting button {
+  cursor: pointer;
 }
 
+.balance .setting .buttons-container {
+  margin: 10px 0 10px 0;
+}
+
+.balance .reload {
+  width: 160px;
+  padding: 6px 0;
+  height: auto;
+}
+
+.balance .add-new-entry {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.balance table {
+  width: 490px;
+}
+
+.balance table th {
+  text-align: left;
+  padding: 5px 0;
+}
+
+.balance table td {
+  text-align: left;
+  padding: 5px 0;
+}
+
+.balance .paid-overtime-hours.invalid {
+  border-color: red;
+}
 
 @font-face {
   font-family: 'icomoon';

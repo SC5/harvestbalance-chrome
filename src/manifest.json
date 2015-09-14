@@ -8,10 +8,11 @@
     {
       "matches": ["https://*.harvestapp.com/*"],
       "css": ["styles.css"],
-      "js": ["jquery-2.1.1.min.js","localforage.min.js","moment.min.js","harvest.js"]
+      "js": ["jquery-2.1.1.min.js","localforage.min.js","mustache.min.js","moment.min.js","harvest.js"]
     }
   ],
   "web_accessible_resources": [
-    "template.html"
+    "main-panel.html",
+    "settings-panel.html"
   ]
 }

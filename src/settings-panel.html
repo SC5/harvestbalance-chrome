@@ -1,0 +1,75 @@
+<h1>Harvest Balance settings</h1>
+<div class="button close-settings">Close</div>
+
+<div class="balance-settings-container">
+
+  <div class="setting">
+    <label for="day-length-range">Change day length</label>
+    <input class="day-length-range" type="range" min="0.5" max="12" step="0.5" value="{{dayLength}}">
+    <output class="day-length">{{dayLength}} hours</output>
+  </div>
+
+  <div class="setting">
+    <label>Change holidays list</label>
+    <select class="holiday-lists">
+    {{#holidayLists}}
+      <option value="{{key}}" {{selected}}>{{value}}</option>
+    {{/holidayLists}}
+    </select>
+  </div>
+
+  <div class="setting">
+    <label>Change start date</label>
+    <input class="start-date" type="date" min="{{firstDayOfPreviousYear}}" max="{{maxDate}}" value="{{calendarStart}}">
+  </div>
+
+  <div class="setting">
+    <label>Change initial balance</label>
+    <p>
+      Your initial balance will be included in the total hour balance.<br>
+      For example, if your balance after 2013 is +10 hours, you set the starting date as 1.1.2014 and initial balance as 10.
+    </p>
+    <input type="text" class="initial-balance" name="initial-balance" value="{{initialBalance}}">
+  </div>
+
+  <div class="setting">
+    <label>Paid overtime</label>
+    <p>These entries will be deducted from the total hour balance.</p>
+
+    <table class="paid-overtimes">
+      <tr>
+        <th>Month</th>
+        <th>Hours</th>
+        <th></th>
+      </tr>
+      {{#paidOvertime.entries}}
+      <tr>
+        <td><strong>{{paidOvertime.title}}</strong></td>
+        <td><input type="text" class="paid-overtime-hours" value={{hours}} data-index={{paidOvertime.index}}></td>
+        <td><button class="button remove" data-index={{paidOvertime.index}}>Remove</button></td>
+      </tr>
+      {{/paidOvertime.entries}}
+      {{^paidOvertime.entries}}
+      <tr>
+        <td colspan="3">No paid overtime entries yet</td>
+      </tr>
+      {{/paidOvertime.entries}}
+    </table>
+
+    <div class="buttons-container">
+      <strong class="add-new-entry">Add new paid overtime</strong>
+      <input type="month" class="new-paid-overtime-month" name="new-paid-overtime-month" value="" placeholder="Month">
+      <input type="text" class="new-paid-overtime-value" name="new-paid-overtime-value" value="" placeholder="Hours">
+      <button class="button add-paid-overtime" disabled>Add</button>
+    </div>
+  </div>
+
+  <div class="setting">
+    <label>Reset all data</label>
+    <p>
+      Removes all cached hours and forces reloading them from Harvest. Won't touch your settings or paid overtime entries.
+    </p>
+    <div class="button reload" title="Clear local storage and reload monthly balances from Harvest."><i class="icon-spinner"></i> Reset all data</div>
+  </div>
+
+</div>

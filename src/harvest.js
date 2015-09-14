@@ -333,58 +333,53 @@
   $(function() {
 
     settings().then(function(settings) {
-      var startDate = settings.startDate ? moment(settings.startDate) : moment().startOf("year");
-      var dayLength = settings.dayLength ? settings.dayLength : 7.5;
-      var holidaysList = settings.holidaysList ? settings.holidaysList : Object.keys(HOLIDAYS)[0];
-      var initialBalance = settings.initialBalance ? parseInt(settings.initialBalance, 10) : 0;
 
-      var template = $.get(chrome.extension.getURL("template.html"));
+      var state = {
+        startDate: settings.startDate ? moment(settings.startDate) : moment().startOf("year"),
+        dayLength: settings.dayLength ? settings.dayLength : 7.5,
+        holidaysList: settings.holidaysList ? settings.holidaysList : Object.keys(HOLIDAYS)[0],
+        initialBalance: settings.initialBalance ? parseInt(settings.initialBalance, 10) : 0,
+        template: $.get(chrome.extension.getURL("template.html"))
+      };
+
+      var setState = function(key, value) {
+        state[key] = value;
+      };
 
       var fetchAndRender = function() {
-        return balance({
-          from: startDate,
-          to: moment(),
-          dayLength: dayLength,
-          holidaysList: holidaysList,
-          initialBalance: initialBalance
-        }).then(function(balance) {
+        return balance(
+          $.extend({}, state, {from: state.startDate, to: moment()})
+        )
+        .then(function(balance) {
           render(
             format(balance),
-            {
-              template: template,
-              startDate: startDate,
-              dayLength: dayLength,
-              holidaysList: holidaysList,
-              initialBalance: initialBalance
-            }
+            $.extend({}, state)
           );
         });
-      }
+      };
 
       // initial render
-      template.then(function(tmpl) {
+      state.template.then(function(tmpl) {
         $("main .wrapper").prepend(
           $("<div class='balance'/>").html(
-            _template(tmpl, {
-              balance: "?",
-              firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
-              maxDate: moment().format("YYYY-MM-DD"),
-              calendarStart: startDate.format("YYYY-MM-DD"),
-              startDate: startDate.format("DD.MM.YYYY"),
-              dayLength: dayLength,
-              initialBalance: initialBalance
-            })
+            _template(tmpl,
+              $.extend(
+                {},
+                state,
+                {
+                  balance: "?",
+                  firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
+                  maxDate: moment().format("YYYY-MM-DD"),
+                  calendarStart: state.startDate.format("YYYY-MM-DD"),
+                  startDate: state.startDate.format("DD.MM.YYYY")
+                }
+              )
+            )
           )
         );
 
         $(".balance").on("click", ".reload", function() {
-          reload({
-            startDate: startDate,
-            template: template,
-            dayLength: dayLength,
-            holidaysList: holidaysList,
-            initialBalance: initialBalance
-          });
+          reload($.extend({}, state));
         });
 
         $(".balance").on("click", ".settings", function() {
@@ -403,25 +398,23 @@
         });
 
         $(".balance").on("change", ".day-length-range", function(event) {
-          dayLength = parseFloat(event.target.value);
-          localforage.setItem("harvestBalance.dayLength", dayLength);
-          fetchAndRender();
+          setState("dayLength", parseFloat(event.target.value));
+          localforage.setItem("harvestBalance.dayLength", state.dayLength);
         });
 
         $(".balance").on("change", ".holiday-lists", function(event) {
-          holidaysList = event.target.value;
-          localforage.setItem("harvestBalance.holidaysList", holidaysList);
-          fetchAndRender();
+          setState("holidaysList", event.target.value);
+          localforage.setItem("harvestBalance.holidaysList", state.holidaysList);
         });
 
         $(".balance").on("change", ".start-date", function(event) {
-          startDate = moment(event.target.value);
+          setState("startDate", moment(event.target.value));
           localforage.setItem("harvestBalance.startDate", event.target.value);
         });
 
         $(".balance").on("change", ".initial-balance", function(event) {
-          initialBalance = parseInt(event.target.value, 10);
-          localforage.setItem("harvestBalance.initialBalance", initialBalance);
+          setState("initialBalance", parseInt(event.target.value, 10));
+          localforage.setItem("harvestBalance.initialBalance", state.initialBalance);
         });
 
         // refetch data when #AjaxSuccess element gets modified

@@ -16,6 +16,10 @@
   // lists of public holidays, used list can be switched in settings panel
   var HOLIDAYS = {
     "Finland (public holidays)": {
+      // In the order listed: New Year's Day, Epiphany, Good Friday,
+      // Easter Monday, Labor Day, Ascension Day, Midsummer's Eve(*),
+      // Independence Day, Christmas Eve(*), Christmas Day, Boxing Day
+      // (*) paid holiday per collective agreement of Association of IT Sector in Finland
       2013: ["1.1", "6.1", "29.3", "1.4", "1.5", "9.5", "21.6", "6.12", "24.12", "25.12", "26.12"],
       2014: ["1.1", "6.1", "18.4", "21.4", "1.5", "29.5", "20.6", "6.12", "24.12", "25.12", "26.12"],
       2015: ["1.1", "6.1", "3.4", "6.4", "1.5", "14.5", "19.6", "6.12", "24.12", "25.12", "26.12"],

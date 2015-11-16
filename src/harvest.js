@@ -217,7 +217,6 @@
   function expectedWeeklyHours(options) {
     var monday = options.monday;
     var startDate = moment(options.startDate);
-    var holidays = publicHolidays(options.holidaysList);
     var iterateUntil, week;
 
     if ( startOfIsoWeek(monday).isSame(startOfIsoWeek(startDate)) ) {
@@ -241,13 +240,15 @@
     }
 
     return week.filter(function(day) {
-      return !isHoliday(day, holidays);
+      return !isHoliday(day, options.holidays);
     }).reduce(function(sum) {
       return sum + options.dayLength;
     }, 0.0);
   }
 
   function balance(options) {
+    var holidays = publicHolidays(options.holidaysList);
+
     return new Promise(function(resolve, reject) {
       var weeklyDeferreds = getMondaysRange(options.from, options.to).map(function(date) {
         return getWeeklyHours(date).then(function(hours) {
@@ -258,7 +259,7 @@
               monday: date,
               startDate: options.from,
               dayLength: options.dayLength,
-              holidaysList: options.holidaysList
+              holidays: holidays
             }),
             actualHours: hours
           };
@@ -284,8 +285,11 @@
             return sum + difference;
           }, 0.0);
 
-          // add default hours for today if no hours logged in yet
-          if (!todaysHours) {
+          // add default hours for today if no hours logged in yet and
+          // this is a weekday and not a paid holiday
+          if (!todaysHours &&
+              moment().isoWeekday() < 6 && // mon-fri = 1..5
+              !isHoliday(moment(), holidays)) {
             balance = balance + options.dayLength;
           }
 

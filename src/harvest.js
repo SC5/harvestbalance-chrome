@@ -334,7 +334,7 @@
   }
 
   function format(balance) {
-    var sign = balance >= 0 ? "+" : "";
+    var sign = balance > 0 ? "+" : "";
     return sign+parseFloat(balance).toFixed(2);
   }
 

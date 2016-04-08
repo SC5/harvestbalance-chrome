@@ -419,10 +419,11 @@
         var mainTemplate = templates[0];
         var settingsTemplate = templates[1];
 
-        $("main .wrapper")
-        .prepend(
+        $("main .js-root-view")
+        .before(
           $("<div class='balance'/>")
-        )
+        );
+        $("main .wrapper")
         .find('.balance')
         .prepend(
           $("<div class='main-panel'/>").html(

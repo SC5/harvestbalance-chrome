@@ -142,7 +142,12 @@
 
   function getWeeklyHours(monday) {
     return new Promise(function(resolve, reject) {
-      var id = "harvestBalance.hours."+ monday.format("YYYY.W");
+      var id;
+      if (monday.isoWeek() === 1) {
+        id = "harvestBalance.hours."+ moment(monday).endOf("isoWeek").format("YYYY.W");
+      } else {
+        id = "harvestBalance.hours."+ monday.format("YYYY.W");
+      }
 
       // always refetch current week and previous week
       if (shouldRefetch(monday)) {

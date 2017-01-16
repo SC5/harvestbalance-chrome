@@ -1,0 +1,30 @@
+{
+  "name": "harvest-balance",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "main": "harvest.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "build": "browserify ./src/harvest.js > ./app/harvest.js",
+    "watch": "watchify ./src/harvest.js -v -o ./app/harvest.js",
+    "test": "mocha --harmony"
+  },
+  "author": "SC5",
+  "license": "MIT",
+  "dependencies": {
+    "jquery": "^3.1.1",
+    "localforage": "^1.4.3",
+    "moment": "^2.17.1",
+    "mustache": "^2.3.0"
+  },
+  "devDependencies": {
+    "browserify": "^13.1.1",
+    "expect": "^1.20.2",
+    "mocha": "^3.2.0",
+    "timekeeper": "^1.0.0",
+    "watchify": "^3.7.0"
+  }
+}

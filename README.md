@@ -35,12 +35,26 @@ Remember to reset your storage by hitting **Settings -> Reset all data** button 
 * Fork https://github.com/SC5/harvestbalance-chrome
 * Clone it
 * Navigate to **chrome://extensions**, enable **"Developer mode"**
-* Drag & drop **src/** from your clone to your browser extensions window
+* Drag & drop **app/** from your clone to your browser extensions window
 * Hack to your heart's content
 * Commit, push and send a PR to upstream
+
+## Building app
+
+`npm run build` will build `./src/harvest.js` to `./app/harvest.js` using Browserify.
+
+## Build automatically on changes during development
+
+`npm run watch` will watch `./src/harvest.js` for changes and update `./app/harvest.js` automatically.
+
+**Remember that you'll still need to reload the extension in chrome://extensions**
+
+## Running tests
+
+`npm run test` will run the unit test suite for balance calculations, make sure your Node.js version supports needed ES6 features (`>= 5.0.0` should do fine) and that all tests pass before submitting PRs.
 
 ## License
 
 MIT
 
-Copyright © 2015 SC5 Online Ltd
+Copyright © 2016 SC5 Online Ltd

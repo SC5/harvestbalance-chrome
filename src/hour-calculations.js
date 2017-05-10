@@ -1,3 +1,4 @@
+const $ = require('jquery');
 const moment = require('moment');
 
 const HOLIDAYS = require('./holidays');
@@ -57,11 +58,20 @@ function getMondaysRange(startDate, endDate) {
 
 // returns weekly hours as object where keys are the dates as YYYY-MM-DD and values are the sum of daily hours
 function reduceWeekly(weekly) {
-  return weekly.day_entries.reduce(function(obj, entry) {
+  return weekly.reduce(function(obj, entry) {
     obj[entry.day_entry.spent_at] = obj[entry.day_entry.spent_at] || 0;
     obj[entry.day_entry.spent_at] += entry.day_entry.hours;
     return obj;
   }, {});
+}
+
+function sumKiky(obj) {
+  return Object.keys(obj).reduce(function(sum, key){
+    // Only sum kiky hours for ongoing year
+    return moment(key).year() === moment().year()
+      ? sum + parseFloat(obj[key])
+      : sum;
+  }, 0);
 }
 
 function formatWeeklyHours(hoursObj, startDate) {
@@ -127,18 +137,20 @@ function balance(options) {
 
   return new Promise(function(resolve, reject) {
     var weeklyDeferreds = getMondaysRange(options.from, options.to).map(function(date) {
-      return weeklyHours(date).then(function(hours) {
-        return formatWeeklyHours(hours, options.from);
-      }).then(function(hours) {
+      return weeklyHours(date, options).then(function(weekly) {
         return {
+          actualHours: formatWeeklyHours(weekly.hours, options.from),
+          kikyHours: sumKiky(weekly.kikyHours)
+        };
+      }).then(function(balance) {
+        return $.extend({
           expectedHours: expectedWeeklyHours({
             monday: date,
             startDate: options.from,
             dayLength: options.dayLength,
             holidays: holidays
-          }),
-          actualHours: hours
-        };
+          })
+        }, balance);
       });
     });
 
@@ -153,10 +165,18 @@ function balance(options) {
 
     Promise.all(weeklyDeferreds).then(function(weeklyBalances) {
 
-      todaysHours.then(function(todaysHours) {
+      todaysHours().then(function(todaysHours) {
 
+        // Set normal hours balance
         var balance = weeklyBalances.map(function(balance) {
           return balance.actualHours - balance.expectedHours;
+        }).reduce(function(sum, difference) {
+          return sum + difference;
+        }, 0.0);
+
+        // Set KiKy hours balance
+        var kikyBalance = weeklyBalances.map(function(balance) {
+          return balance.kikyHours;
         }).reduce(function(sum, difference) {
           return sum + difference;
         }, 0.0);
@@ -176,8 +196,10 @@ function balance(options) {
 
         // deduce paid overtime
         balance = balance - paidOvertime;
-
-        resolve(balance);
+        resolve({
+          balance: balance,
+          kikyBalance: kikyBalance
+        });
       });
     });
 
@@ -195,5 +217,5 @@ module.exports = {
   reduceWeekly,
   formatWeeklyHours,
   expectedWeeklyHours,
-  balance,
+  balance
 };

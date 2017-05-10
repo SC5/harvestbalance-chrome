@@ -4,7 +4,12 @@ const Mustache = require('mustache');
 
 const HOLIDAYS = require('./holidays');
 
-const { namespace } = require('./config');
+const {
+  namespace,
+  kikyNamespace,
+  kikyTask,
+  kikyHours
+} = require('./config');
 
 const {
   fetchUserId,
@@ -15,11 +20,12 @@ const {
   buildHolidayLists,
   shouldRefetch,
   balance,
+  kikyBalance,
+  reduceWeekly
 } = require('./hour-calculations');
 
 const {
   settings,
-  balanceKeys,
   clearBalanceHours,
   todaysHours,
   setWeeklyHours,
@@ -34,47 +40,66 @@ const config = {
   }
 };
 
-function weeklyHours(monday) {
-  return new Promise(function(resolve, reject) {
-    var id;
-    if (monday.isoWeek() === 1) {
-      id = namespace + moment(monday).endOf("isoWeek").format("YYYY.W");
-    } else {
-      id = namespace + monday.format("YYYY.W");
-    }
+function getFilteredHours (weekly, kiky, kikyTask) {
+  return weekly.day_entries.filter(function(entry) {
+    return kiky ? entry.day_entry.task_id === kikyTask : entry.day_entry.task_id !== kikyTask;
+  })
+}
 
+function fetchWeeklyHours(id, monday, resolve, options) {
+  fetchJSON(monday).then(function(weeklyHours) {
+    var normalHours = reduceWeekly(getFilteredHours(weeklyHours, false, options.kikyTask));
+    var kikyHours = reduceWeekly(getFilteredHours(weeklyHours, true, options.kikyTask));
+
+    Promise.all([
+      setWeeklyHours(namespace + id, normalHours),
+      setWeeklyHours(kikyNamespace + id, kikyHours)
+    ]).then(function() {
+      resolve({
+        hours: normalHours,
+        kikyHours: kikyHours
+      });
+    });
+  });
+}
+
+function weeklyHours(monday, options) {
+  var id = monday.isoWeek() === 1
+    ? moment(monday).endOf("isoWeek").format("YYYY.W")
+    : monday.format("YYYY.W");
+
+  return new Promise(function(resolve, reject) {
     // always refetch current week and previous week
     if (shouldRefetch(monday)) {
-      fetchJSON(monday).then(function(weeklyHours) {
-        setWeeklyHours(id, weeklyHours).then(function() {
-          resolve(weeklyHours);
-        });
-      });
+      fetchWeeklyHours(id, monday, resolve, options)
     } else {
       // first try from storage and if it fails, fetch json from harvest
-      getWeeklyHours(id).then(function(weeklyHours) {
-        if (weeklyHours) {
-          resolve(weeklyHours);
-        } else {
-          fetchJSON(monday).then(function(weeklyHours) {
-            setWeeklyHours(id, weeklyHours).then(function() {
-              resolve(weeklyHours);
-            });
+      Promise.all([
+        getWeeklyHours(namespace + id),
+        getWeeklyHours(kikyNamespace + id)
+      ]).then(function(weeklyHours) {
+        if (weeklyHours[0]) {
+          resolve({
+            hours: weeklyHours[0],
+            kikyHours: weeklyHours[1]
           });
+        } else {
+          fetchWeeklyHours(id, monday, resolve, options)
         }
       });
     }
   });
 }
 
-function render(balance, options) {
+function render(balances, options) {
   Promise.all(options.templates).then(function(templates) {
     var template = templates[config.templates[options.template].index];
     var selector = config.templates[options.template].selector;
 
     $(".balance " + selector).html(
       Mustache.render(template, {
-        balance: balance,
+        balance: format(balances.balance),
+        kikyBalance: format(balances.kikyBalance, false),
         firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
         maxDate: moment().format("YYYY-MM-DD"),
         calendarStart: options.startDate.format("YYYY-MM-DD"),
@@ -82,14 +107,17 @@ function render(balance, options) {
         dayLength: options.dayLength,
         holidayLists: buildHolidayLists(options.holidaysList),
         initialBalance: options.initialBalance,
+        kikyTask: options.kikyTask,
+        kikyHours: options.kikyHours,
+        currentYear: moment().format("YYYY"),
         paidOvertime: options.paidOvertime
       })
     );
   });
 }
 
-function format(balance) {
-  var sign = balance > 0 ? "+" : "";
+function format(balance, noSign) {
+  var sign = !noSign && balance > 0 ? "+" : "";
   return sign+parseFloat(balance).toFixed(2);
 }
 
@@ -104,12 +132,12 @@ function reload(options) {
         dayLength: options.dayLength,
         holidaysList: options.holidaysList,
         initialBalance: options.initialBalance,
+        kikyTask: options.kikyTask,
         paidOvertime: options.paidOvertime,
         weeklyHours: weeklyHours,
-        todaysHours: todaysHours()
-      }).then(function(balance) {
-        render(
-          format(balance),
+        todaysHours: todaysHours
+      }).then(function(balances) {
+        render(balances,
           {
             templates: options.templates,
             template: "main",
@@ -117,6 +145,7 @@ function reload(options) {
             dayLength: options.dayLength,
             holidaysList: options.holidaysList,
             initialBalance: options.initialBalance,
+            kikyTask: options.kikyTask,
             paidOvertime: options.paidOvertime
           }
         );
@@ -128,12 +157,13 @@ function reload(options) {
 $(function() {
 
   settings().then(function(settings) {
-
     var state = {
       startDate: settings.startDate ? moment(settings.startDate) : moment().startOf("year"),
       dayLength: settings.dayLength ? settings.dayLength : 7.5,
       holidaysList: settings.holidaysList ? settings.holidaysList : Object.keys(HOLIDAYS)[0],
       initialBalance: settings.initialBalance ? parseInt(settings.initialBalance, 10) : 0,
+      kikyTask: settings.kikyTask || kikyTask,
+      kikyHours: settings.kikyHours || kikyHours,
       paidOvertime: {
         index: function() {
           return state.paidOvertime.entries.indexOf(this);
@@ -165,12 +195,10 @@ $(function() {
           from: state.startDate,
           to: moment(),
           weeklyHours: weeklyHours,
-          todaysHours: todaysHours()
+          todaysHours: todaysHours
         })
-      )
-      .then(function(balance) {
-        render(
-          format(balance),
+      ).then(function(balances) {
+        render(balances,
           $.extend({}, state, {template: template || "main"})
         );
       });
@@ -250,6 +278,16 @@ $(function() {
       $(".balance").on("change", ".initial-balance", function(event) {
         setState("initialBalance", parseInt(event.target.value, 10));
         setItem("harvestBalance.initialBalance", state.initialBalance);
+      });
+
+      $(".balance").on("change", ".kiky-task", function(event) {
+        setState("kikyTask", parseInt(event.target.value, 10));
+        setItem("harvestBalance.kikyTask", state.kikyTask);
+      });
+
+      $(".balance").on("change", ".kiky-hours", function(event) {
+        setState("kikyHours", parseFloat(event.target.value));
+        setItem("harvestBalance.kikyHours", state.kikyHours);
       });
 
       $(".balance").on("click", ".remove", function(event) {

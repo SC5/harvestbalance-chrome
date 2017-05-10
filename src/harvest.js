@@ -99,7 +99,7 @@ function render(balances, options) {
     $(".balance " + selector).html(
       Mustache.render(template, {
         balance: format(balances.balance),
-        kikyBalance: format(balances.kikyBalance, false),
+        kikyBalance: format(balances.kikyBalance, true),
         firstDayOfPreviousYear: moment().subtract(1, "years").startOf('year').format("YYYY-MM-DD"),
         maxDate: moment().format("YYYY-MM-DD"),
         calendarStart: options.startDate.format("YYYY-MM-DD"),

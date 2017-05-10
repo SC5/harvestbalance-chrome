@@ -1,5 +1,4 @@
 const $ = require('jquery');
-const { reduceWeekly } = require('./hour-calculations');
 
 // retrieves harvest user id from API
 function fetchUserId() {
@@ -12,7 +11,7 @@ function fetchJSON(startDate) {
   return fetchUserId().then(function(userId) {
     return $.getJSON("/time/weekly/"+ startDate.format("YYYY/MM/DD") +"/user/"+userId)
     .then(function(weekly) {
-      return reduceWeekly(weekly);
+      return weekly;
     });
   });
 }

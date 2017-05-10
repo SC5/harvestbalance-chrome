@@ -1,7 +1,8 @@
 const localforage = require('localforage');
 const moment = require('moment');
 
-const { namespace } = require('./config');
+const kikyKey = 'harvestBalance.kiky';
+const { namespace, kikyNamespace } = require('./config');
 
 // loads settings from localForage and returns an object
 function settings() {
@@ -11,14 +12,18 @@ function settings() {
       localforage.getItem("harvestBalance.dayLength"),
       localforage.getItem("harvestBalance.holidaysList"),
       localforage.getItem("harvestBalance.initialBalance"),
-      localforage.getItem("harvestBalance.paidOvertime")
+      localforage.getItem("harvestBalance.paidOvertime"),
+      localforage.getItem("harvestBalance.kikyTask"),
+      localforage.getItem("harvestBalance.kikyHours")
     ]).then(function(settings) {
       return resolve({
         startDate: settings[0],
         dayLength: settings[1],
         holidaysList: settings[2],
         initialBalance: settings[3],
-        paidOvertime: settings[4]
+        paidOvertime: settings[4],
+        kikyTask: settings[5],
+        kikyHours: settings[6]
       });
     });
   });
@@ -27,7 +32,7 @@ function settings() {
 function balanceKeys() {
   return localforage.keys().then(function(keys) {
     return keys.filter(function(key) {
-      return key.match(namespace);
+      return key.match(namespace) || key.match(kikyNamespace);
     });
   });
 }
@@ -66,7 +71,6 @@ function setItem(key, value) {
 
 module.exports = {
   settings,
-  balanceKeys,
   clearBalanceHours,
   todaysHours,
   setWeeklyHours,

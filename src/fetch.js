@@ -7,12 +7,10 @@ function fetchUserId() {
   });
 }
 
-function fetchJSON(startDate) {
-  return fetchUserId().then(function(userId) {
-    return $.getJSON("/time/weekly/"+ startDate.format("YYYY/MM/DD") +"/user/"+userId)
-    .then(function(weekly) {
-      return weekly;
-    });
+function fetchJSON(startDate, userId) {
+  return $.getJSON("/time/weekly/"+ startDate.format("YYYY/MM/DD") +"/user/"+userId)
+  .then(function(weekly) {
+    return weekly;
   });
 }
 

@@ -3,6 +3,10 @@ const moment = require('moment');
 
 const HOLIDAYS = require('./holidays');
 
+const {
+  fetchUserId
+} = require('./fetch');
+
 function buildHolidayLists(selectedList) {
   return Object.keys(HOLIDAYS).map(function(list) {
     return {
@@ -135,74 +139,77 @@ function balance(options) {
   const weeklyHours = options.weeklyHours;
   const todaysHours = options.todaysHours;
 
-  return new Promise(function(resolve, reject) {
-    var weeklyDeferreds = getMondaysRange(options.from, options.to).map(function(date) {
-      return weeklyHours(date, options).then(function(weekly) {
-        return {
-          actualHours: formatWeeklyHours(weekly.hours, options.from),
-          kikyHours: sumKiky(weekly.kikyHours)
-        };
-      }).then(function(balance) {
-        return $.extend({
-          expectedHours: expectedWeeklyHours({
-            monday: date,
-            startDate: options.from,
-            dayLength: options.dayLength,
-            holidays: holidays
-          })
-        }, balance);
+  return fetchUserId()
+  .then(function(userId) {
+    options.userId = userId;
+    return new Promise(function(resolve, reject) {
+      var weeklyDeferreds = getMondaysRange(options.from, options.to).map(function(date) {
+        return weeklyHours(date, options).then(function(weekly) {
+          return {
+            actualHours: formatWeeklyHours(weekly.hours, options.from),
+            kikyHours: sumKiky(weekly.kikyHours)
+          };
+        }).then(function(balance) {
+          return $.extend({
+            expectedHours: expectedWeeklyHours({
+              monday: date,
+              startDate: options.from,
+              dayLength: options.dayLength,
+              holidays: holidays
+            })
+          }, balance);
+        });
       });
-    });
 
-    // reduce paid overtime for given time period
-    var paidOvertime = options.paidOvertime.entries.reduce(function(total, row) {
-      var date = moment(row.month, "YYYY-MM").startOf("month");
-      if (date >= options.from && date <= options.to) {
-        total = total + Number(row.hours);
-      }
-      return total;
-    }, 0);
-
-    Promise.all(weeklyDeferreds).then(function(weeklyBalances) {
-
-      todaysHours().then(function(todaysHours) {
-
-        // Set normal hours balance
-        var balance = weeklyBalances.map(function(balance) {
-          return balance.actualHours - balance.expectedHours;
-        }).reduce(function(sum, difference) {
-          return sum + difference;
-        }, 0.0);
-
-        // Set KiKy hours balance
-        var kikyBalance = weeklyBalances.map(function(balance) {
-          return balance.kikyHours;
-        }).reduce(function(sum, difference) {
-          return sum + difference;
-        }, 0.0);
-
-        // add default hours for today if no hours logged in yet and
-        // this is a weekday and not a paid holiday
-        if (
-          !todaysHours &&
-          moment().isoWeekday() < 6 && // mon-fri = 1..5
-          !isHoliday(moment(), holidays)
-        ) {
-          balance = balance + options.dayLength;
+      // reduce paid overtime for given time period
+      var paidOvertime = options.paidOvertime.entries.reduce(function(total, row) {
+        var date = moment(row.month, "YYYY-MM").startOf("month");
+        if (date >= options.from && date <= options.to) {
+          total = total + Number(row.hours);
         }
+        return total;
+      }, 0);
 
-        // add initial balance
-        balance = balance + options.initialBalance;
+      Promise.all(weeklyDeferreds).then(function(weeklyBalances) {
 
-        // deduce paid overtime
-        balance = balance - paidOvertime;
-        resolve({
-          balance: balance,
-          kikyBalance: kikyBalance
+        todaysHours().then(function(todaysHours) {
+
+          // Set normal hours balance
+          var balance = weeklyBalances.map(function(balance) {
+            return balance.actualHours - balance.expectedHours;
+          }).reduce(function(sum, difference) {
+            return sum + difference;
+          }, 0.0);
+
+          // Set KiKy hours balance
+          var kikyBalance = weeklyBalances.map(function(balance) {
+            return balance.kikyHours;
+          }).reduce(function(sum, difference) {
+            return sum + difference;
+          }, 0.0);
+
+          // add default hours for today if no hours logged in yet and
+          // this is a weekday and not a paid holiday
+          if (
+            !todaysHours &&
+            moment().isoWeekday() < 6 && // mon-fri = 1..5
+            !isHoliday(moment(), holidays)
+          ) {
+            balance = balance + options.dayLength;
+          }
+
+          // add initial balance
+          balance = balance + options.initialBalance;
+
+          // deduce paid overtime
+          balance = balance - paidOvertime;
+          resolve({
+            balance: balance,
+            kikyBalance: kikyBalance
+          });
         });
       });
     });
-
   });
 }
 

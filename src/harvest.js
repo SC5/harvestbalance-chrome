@@ -12,7 +12,6 @@ const {
 } = require('./config');
 
 const {
-  fetchUserId,
   fetchJSON,
 } = require('./fetch');
 
@@ -47,7 +46,7 @@ function getFilteredHours (weekly, kiky, kikyTask) {
 }
 
 function fetchWeeklyHours(id, monday, resolve, options) {
-  fetchJSON(monday).then(function(weeklyHours) {
+  fetchJSON(monday, options.userId).then(function(weeklyHours) {
     var normalHours = reduceWeekly(getFilteredHours(weeklyHours, false, options.kikyTask));
     var kikyHours = reduceWeekly(getFilteredHours(weeklyHours, true, options.kikyTask));
 

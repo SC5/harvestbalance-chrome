@@ -17689,12 +17689,10 @@ function fetchUserId() {
   });
 }
 
-function fetchJSON(startDate) {
-  return fetchUserId().then(function(userId) {
-    return $.getJSON("/time/weekly/"+ startDate.format("YYYY/MM/DD") +"/user/"+userId)
-    .then(function(weekly) {
-      return weekly;
-    });
+function fetchJSON(startDate, userId) {
+  return $.getJSON("/time/weekly/"+ startDate.format("YYYY/MM/DD") +"/user/"+userId)
+  .then(function(weekly) {
+    return weekly;
   });
 }
 
@@ -17718,7 +17716,6 @@ const {
 } = require('./config');
 
 const {
-  fetchUserId,
   fetchJSON,
 } = require('./fetch');
 
@@ -17753,7 +17750,7 @@ function getFilteredHours (weekly, kiky, kikyTask) {
 }
 
 function fetchWeeklyHours(id, monday, resolve, options) {
-  fetchJSON(monday).then(function(weeklyHours) {
+  fetchJSON(monday, options.userId).then(function(weeklyHours) {
     var normalHours = reduceWeekly(getFilteredHours(weeklyHours, false, options.kikyTask));
     var kikyHours = reduceWeekly(getFilteredHours(weeklyHours, true, options.kikyTask));
 
@@ -18085,6 +18082,10 @@ const moment = require('moment');
 
 const HOLIDAYS = require('./holidays');
 
+const {
+  fetchUserId
+} = require('./fetch');
+
 function buildHolidayLists(selectedList) {
   return Object.keys(HOLIDAYS).map(function(list) {
     return {
@@ -18217,74 +18218,77 @@ function balance(options) {
   const weeklyHours = options.weeklyHours;
   const todaysHours = options.todaysHours;
 
-  return new Promise(function(resolve, reject) {
-    var weeklyDeferreds = getMondaysRange(options.from, options.to).map(function(date) {
-      return weeklyHours(date, options).then(function(weekly) {
-        return {
-          actualHours: formatWeeklyHours(weekly.hours, options.from),
-          kikyHours: sumKiky(weekly.kikyHours)
-        };
-      }).then(function(balance) {
-        return $.extend({
-          expectedHours: expectedWeeklyHours({
-            monday: date,
-            startDate: options.from,
-            dayLength: options.dayLength,
-            holidays: holidays
-          })
-        }, balance);
+  return fetchUserId()
+  .then(function(userId) {
+    options.userId = userId;
+    return new Promise(function(resolve, reject) {
+      var weeklyDeferreds = getMondaysRange(options.from, options.to).map(function(date) {
+        return weeklyHours(date, options).then(function(weekly) {
+          return {
+            actualHours: formatWeeklyHours(weekly.hours, options.from),
+            kikyHours: sumKiky(weekly.kikyHours)
+          };
+        }).then(function(balance) {
+          return $.extend({
+            expectedHours: expectedWeeklyHours({
+              monday: date,
+              startDate: options.from,
+              dayLength: options.dayLength,
+              holidays: holidays
+            })
+          }, balance);
+        });
       });
-    });
 
-    // reduce paid overtime for given time period
-    var paidOvertime = options.paidOvertime.entries.reduce(function(total, row) {
-      var date = moment(row.month, "YYYY-MM").startOf("month");
-      if (date >= options.from && date <= options.to) {
-        total = total + Number(row.hours);
-      }
-      return total;
-    }, 0);
-
-    Promise.all(weeklyDeferreds).then(function(weeklyBalances) {
-
-      todaysHours().then(function(todaysHours) {
-
-        // Set normal hours balance
-        var balance = weeklyBalances.map(function(balance) {
-          return balance.actualHours - balance.expectedHours;
-        }).reduce(function(sum, difference) {
-          return sum + difference;
-        }, 0.0);
-
-        // Set KiKy hours balance
-        var kikyBalance = weeklyBalances.map(function(balance) {
-          return balance.kikyHours;
-        }).reduce(function(sum, difference) {
-          return sum + difference;
-        }, 0.0);
-
-        // add default hours for today if no hours logged in yet and
-        // this is a weekday and not a paid holiday
-        if (
-          !todaysHours &&
-          moment().isoWeekday() < 6 && // mon-fri = 1..5
-          !isHoliday(moment(), holidays)
-        ) {
-          balance = balance + options.dayLength;
+      // reduce paid overtime for given time period
+      var paidOvertime = options.paidOvertime.entries.reduce(function(total, row) {
+        var date = moment(row.month, "YYYY-MM").startOf("month");
+        if (date >= options.from && date <= options.to) {
+          total = total + Number(row.hours);
         }
+        return total;
+      }, 0);
 
-        // add initial balance
-        balance = balance + options.initialBalance;
+      Promise.all(weeklyDeferreds).then(function(weeklyBalances) {
 
-        // deduce paid overtime
-        balance = balance - paidOvertime;
-        resolve({
-          balance: balance,
-          kikyBalance: kikyBalance
+        todaysHours().then(function(todaysHours) {
+
+          // Set normal hours balance
+          var balance = weeklyBalances.map(function(balance) {
+            return balance.actualHours - balance.expectedHours;
+          }).reduce(function(sum, difference) {
+            return sum + difference;
+          }, 0.0);
+
+          // Set KiKy hours balance
+          var kikyBalance = weeklyBalances.map(function(balance) {
+            return balance.kikyHours;
+          }).reduce(function(sum, difference) {
+            return sum + difference;
+          }, 0.0);
+
+          // add default hours for today if no hours logged in yet and
+          // this is a weekday and not a paid holiday
+          if (
+            !todaysHours &&
+            moment().isoWeekday() < 6 && // mon-fri = 1..5
+            !isHoliday(moment(), holidays)
+          ) {
+            balance = balance + options.dayLength;
+          }
+
+          // add initial balance
+          balance = balance + options.initialBalance;
+
+          // deduce paid overtime
+          balance = balance - paidOvertime;
+          resolve({
+            balance: balance,
+            kikyBalance: kikyBalance
+          });
         });
       });
     });
-
   });
 }
 
@@ -18302,7 +18306,7 @@ module.exports = {
   balance
 };
 
-},{"./holidays":8,"jquery":1,"moment":3}],10:[function(require,module,exports){
+},{"./fetch":6,"./holidays":8,"jquery":1,"moment":3}],10:[function(require,module,exports){
 const localforage = require('localforage');
 const moment = require('moment');
 

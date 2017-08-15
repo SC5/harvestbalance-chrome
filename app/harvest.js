@@ -17826,6 +17826,7 @@ function format(balance, noSign) {
 
 function reload(options) {
   clearBalanceHours().then(function() {
+    alert('Balance cleared - reloading data');
     // this awkward setTimeout is needed because localForage has issues with Chrome
     // see: https://github.com/mozilla/localForage/issues/175
     setTimeout(function() {
@@ -17912,7 +17913,7 @@ $(function() {
       var mainTemplate = templates[0];
       var settingsTemplate = templates[1];
 
-      $("main .js-root-view")
+      $("main .js-root-view, main .js-day-view-wrapper")
       .before(
         $("<div class='balance'/>")
       );

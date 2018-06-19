@@ -17,6 +17,8 @@ In **Settings** panel you can customize the day length, pick a holidays list and
 
 **Day length** is used to calculate the expected hours (working days * day length).
 
+**Monday length** can be used to set a different day length for Mondays.
+
 **Holidays list** contains all days that are excluded from expected hours calculation. Currently holiday lists are hardcoded in source, see **HOLIDAYS** in **src/harvest.js** for available lists.
 
 **Reset all data** button will clear the local storage and reload monthly balances from Harvest.

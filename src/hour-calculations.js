@@ -38,6 +38,10 @@ function isHoliday(date, holidays) {
   });
 }
 
+function isMonday(date) {
+  return moment(date).isoWeekday() === 1
+}
+
 function isCurrentWeek(date) {
   return startOfIsoWeek(date).isSame(startOfIsoWeek(moment()));
 }
@@ -129,8 +133,8 @@ function expectedWeeklyHours(options) {
 
   return week.filter(function(day) {
     return !isHoliday(day, options.holidays);
-  }).reduce(function(sum) {
-    return sum + options.dayLength;
+  }).reduce(function(sum, day) {
+    return sum + (isMonday(day) ? options.mondayLength : options.dayLength);
   }, 0.0);
 }
 
@@ -155,6 +159,7 @@ function balance(options) {
               monday: date,
               startDate: options.from,
               dayLength: options.dayLength,
+              mondayLength: options.mondayLength,
               holidays: holidays
             })
           }, balance);
@@ -195,7 +200,7 @@ function balance(options) {
             moment().isoWeekday() < 6 && // mon-fri = 1..5
             !isHoliday(moment(), holidays)
           ) {
-            balance = balance + options.dayLength;
+            balance = balance + (isMonday(moment()) ? options.mondayLength : options.dayLength);
           }
 
           // add initial balance

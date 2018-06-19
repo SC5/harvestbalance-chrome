@@ -104,6 +104,7 @@ function render(balances, options) {
         calendarStart: options.startDate.format("YYYY-MM-DD"),
         startDate: options.startDate.format("DD.MM.YYYY"),
         dayLength: options.dayLength,
+        mondayLength: options.mondayLength,
         holidayLists: buildHolidayLists(options.holidaysList),
         initialBalance: options.initialBalance,
         kikyTask: options.kikyTask,
@@ -130,6 +131,7 @@ function reload(options) {
         from: options.startDate,
         to: moment(),
         dayLength: options.dayLength,
+        mondayLength: options.mondayLength,
         holidaysList: options.holidaysList,
         initialBalance: options.initialBalance,
         kikyTask: options.kikyTask,
@@ -143,6 +145,7 @@ function reload(options) {
             template: "main",
             startDate: options.startDate,
             dayLength: options.dayLength,
+            mondayLength: options.mondayLength,
             holidaysList: options.holidaysList,
             initialBalance: options.initialBalance,
             kikyTask: options.kikyTask,
@@ -160,6 +163,7 @@ $(function() {
     var state = {
       startDate: settings.startDate ? moment(settings.startDate) : moment().startOf("year"),
       dayLength: settings.dayLength ? settings.dayLength : 7.5,
+      mondayLength: settings.mondayLength ? settings.mondayLength : 8.0,
       holidaysList: settings.holidaysList ? settings.holidaysList : Object.keys(HOLIDAYS)[0],
       initialBalance: settings.initialBalance ? parseInt(settings.initialBalance, 10) : 0,
       kikyTask: settings.kikyTask || kikyTask,
@@ -209,7 +213,7 @@ $(function() {
       var mainTemplate = templates[0];
       var settingsTemplate = templates[1];
 
-      $("main .js-root-view, main .js-day-view-wrapper")
+      $("main .js-root-view, main .day-view-wrapper")
       .before(
         $("<div class='balance'/>")
       );
@@ -263,6 +267,15 @@ $(function() {
       $(".balance").on("change", ".day-length-range", function(event) {
         setState("dayLength", parseFloat(event.target.value));
         setItem("harvestBalance.dayLength", state.dayLength);
+      });
+
+      $(".balance").on("input", ".monday-length-range", function(event) {
+        $(".balance .monday-length").val(event.target.value+" hours");
+      });
+
+      $(".balance").on("change", ".monday-length-range", function(event) {
+        setState("mondayLength", parseFloat(event.target.value));
+        setItem("harvestBalance.mondayLength", state.mondayLength);
       });
 
       $(".balance").on("change", ".holiday-lists", function(event) {

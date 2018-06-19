@@ -26,15 +26,16 @@ describe('Harvest balance', () => {
 
     });
 
-    it('should require 37.5 billable hours on normal week', () => {
+    it('should require 38 billable hours on normal week', () => {
       tk.freeze(moment("2016-12-16").endOf("day").toDate());
       const hours = expectedWeeklyHours({
         monday: moment("2016-12-12"),
         startDate: moment("2016-12-12"),
         dayLength: 7.5,
+        mondayLength: 8.0,
         holidays: publicHolidays(Object.keys(HOLIDAYS)[0])
       });
-      expect(hours).toEqual(37.5);
+      expect(hours).toEqual(38);
       tk.reset();
     });
 
@@ -44,9 +45,10 @@ describe('Harvest balance', () => {
         monday: moment("2016-12-05"),
         startDate: moment("2016-12-05"),
         dayLength: 7.5,
+        mondayLength: 8,
         holidays: publicHolidays(Object.keys(HOLIDAYS)[0])
       });
-      expect(hours).toEqual(30);
+      expect(hours).toEqual(30.5);
       tk.reset();
     });
   });

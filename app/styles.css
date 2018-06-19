@@ -57,18 +57,18 @@
   top: 15px;
 }
 
-.balance .day-length-range {
+.balance .day-length-range, .balance .monday-length-range {
   display: inline-block;
   width: 160px;
   vertical-align: middle;
 }
 
-.balance .day-length-range:focus {
+.balance .day-length-range:focus, .balance .monday-length-range:focus {
   border: 1px solid #aaa;
   box-shadow: none;
 }
 
-.balance .day-length {
+.balance .day-length, .balance .monday-length {
   font-size: 15px;
   padding: 10px;
   font-weight: bold;

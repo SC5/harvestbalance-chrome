@@ -10,6 +10,7 @@ function settings() {
     Promise.all([
       localforage.getItem("harvestBalance.startDate"),
       localforage.getItem("harvestBalance.dayLength"),
+      localforage.getItem("harvestBalance.mondayLength"),
       localforage.getItem("harvestBalance.holidaysList"),
       localforage.getItem("harvestBalance.initialBalance"),
       localforage.getItem("harvestBalance.paidOvertime"),
@@ -19,11 +20,12 @@ function settings() {
       return resolve({
         startDate: settings[0],
         dayLength: settings[1],
-        holidaysList: settings[2],
-        initialBalance: settings[3],
-        paidOvertime: settings[4],
-        kikyTask: settings[5],
-        kikyHours: settings[6]
+        mondayLength: settings[2],
+        holidaysList: settings[3],
+        initialBalance: settings[4],
+        paidOvertime: settings[5],
+        kikyTask: settings[6],
+        kikyHours: settings[7]
       });
     });
   });
